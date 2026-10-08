@@ -16,7 +16,7 @@ DIAS_SEMANA_MAP = {
     6: "DOM",
 }
 
-OPCOES_DIA_SEMANA = ["TODOS", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"]
+OPCOES_DIA_SEMANA = ["TODOS", "SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"]
 
 
 # -- Formatacao ----------------------------------------------------------------
@@ -126,8 +126,6 @@ def calcular_janela_circular_minima(
 
     for i in range(n):
         j = i + qtd_cobertura - 1
-        if j >= len(minutos_ext):
-            break
         inicio = minutos_ext[i]
         fim = minutos_ext[j]
         largura = fim - inicio
@@ -142,11 +140,20 @@ def calcular_janela_circular_minima(
         and melhor_fim < melhor_inicio
     )
 
+    # Cobertura medida: quantos horarios caem de fato dentro da faixa escolhida,
+    # lidos de forma circular. A tolerancia cobre o erro de ponto flutuante nos
+    # extremos da janela.
+    qtd_dentro = sum(
+        1
+        for m in minutos_limpos
+        if ((m - melhor_inicio) % MINUTOS_DIA) <= menor_largura + 1e-9
+    )
+
     return {
         "janela_inicio_min": melhor_inicio,
         "janela_fim_min": melhor_fim,
         "largura_min": menor_largura,
-        "cobertura_real": qtd_cobertura / n if n > 0 else 0.0,
+        "cobertura_real": qtd_dentro / n,
         "cruza_meia_noite": cruza,
     }
 
@@ -206,42 +213,15 @@ def normalizar_volume_caixas(serie: pd.Series) -> tuple[pd.Series, dict]:
     mask_zero_real = serie_numerica.fillna(0).eq(0) & ~mask_nulo_original
     mask_invalido_convertido = serie_numerica.isna() & ~mask_nulo_original
 
+    serie_valida = serie_numerica[~mask_nulo_original & ~mask_invalido_convertido]
+
     resumo_validacao = {
         "qtd_total": int(len(serie_original)),
         "qtd_nulos_origem": int(mask_nulo_original.sum()),
         "qtd_zeros_reais": int(mask_zero_real.sum()),
         "qtd_invalidos_convertidos": int(mask_invalido_convertido.sum()),
+        "qtd_validos": int(len(serie_valida)),
+        "media_validos": float(serie_valida.mean()) if not serie_valida.empty else 0.0,
     }
 
     return serie_numerica.fillna(0.0), resumo_validacao
-
-
-# -- Streamlit -----------------------------------------------------------------
-
-def preparar_dataframe_streamlit(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Converte colunas textuais/mistas para string para evitar erros de
-    serializacao Arrow no Streamlit. Preserva colunas numericas.
-    """
-    if df is None:
-        return pd.DataFrame()
-
-    if isinstance(df, dict):
-        df = pd.DataFrame(df)
-
-    exibicao = df.copy()
-
-    for coluna in exibicao.columns:
-        serie = exibicao[coluna]
-        if (
-            pd.api.types.is_object_dtype(serie)
-            or pd.api.types.is_string_dtype(serie)
-            or isinstance(serie.dtype, pd.CategoricalDtype)
-        ):
-            exibicao[coluna] = (
-                serie.astype("string")
-                .replace({"nan": pd.NA, "None": pd.NA, "<NA>": pd.NA})
-                .fillna("")
-            )
-
-    return exibicao

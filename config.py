@@ -20,7 +20,6 @@ def initialize_directories() -> None:
 
 APP_NAME = "Luna"
 APP_TITLE = "Luna | Análise de Tempos"
-LAYOUT = "wide"
 
 THEME = {
     "bg": "#e0e0e0",
