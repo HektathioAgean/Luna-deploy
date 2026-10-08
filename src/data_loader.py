@@ -48,6 +48,13 @@ def list_available_unit_files() -> list[str]:
 def read_csv_safely(file_path: Path) -> pd.DataFrame:
     """
     Tenta ler CSV com combinações comuns de separador e encoding.
+
+    pd.read_csv não levanta erro quando o separador está errado: devolve uma
+    única coluna com a linha inteira. Por isso cada tentativa é validada pelo
+    número de colunas obtidas, e não apenas pela ausência de exceção.
+
+    Tudo é lido como texto: sem isso o código de cliente 00123 vira o número
+    123. Datas e volume já são convertidos a partir de texto adiante.
     """
     attempts = [
         {"sep": ";", "encoding": "utf-8-sig"},
@@ -59,17 +66,65 @@ def read_csv_safely(file_path: Path) -> pd.DataFrame:
     ]
 
     last_error = None
+    tentativas_uma_coluna = []
 
     for params in attempts:
         try:
-            return pd.read_csv(file_path, low_memory=False, **params)
+            df = pd.read_csv(file_path, low_memory=False, dtype=str, **params)
         except Exception as exc:
             last_error = exc
+            continue
+
+        if df.shape[1] > 1:
+            return df
+
+        primeira_coluna = str(df.columns[0]) if df.shape[1] else ""
+        tentativas_uma_coluna.append(
+            f"sep='{params['sep']}' encoding='{params['encoding']}' "
+            f"-> 1 coluna ('{primeira_coluna[:60]}')"
+        )
+
+    if tentativas_uma_coluna:
+        raise ValueError(
+            f"Erro ao ler o CSV '{file_path.name}'. "
+            f"Nenhum separador testado produziu mais de uma coluna. "
+            f"Tentativas: {' | '.join(tentativas_uma_coluna)}"
+        )
 
     raise ValueError(
         f"Erro ao ler o CSV '{file_path.name}'. "
         f"Não foi possível interpretar o arquivo com os formatos testados. "
         f"Último erro: {last_error}"
+    )
+
+
+def carregar_arquivo(caminho: Path) -> pd.DataFrame:
+    """
+    Carrega uma base a partir de um caminho informado pelo operador.
+
+    Aceita qualquer lugar do disco ou da rede (V:, G:, N:, P:), sem a convenção
+    de nome {UNIDADE}_data.csv exigida por load_unit_file. CSV passa por
+    read_csv_safely, que é quem resolve separador e encoding das bases vindas
+    do file server.
+    """
+    caminho = Path(caminho)
+
+    if not caminho.exists():
+        raise FileNotFoundError(f"Arquivo não encontrado: {caminho}")
+
+    if not caminho.is_file():
+        raise ValueError(f"O caminho informado não é um arquivo: {caminho}")
+
+    sufixo = caminho.suffix.lower()
+
+    if sufixo == ".csv":
+        return read_csv_safely(caminho)
+
+    if sufixo in {".xlsx", ".xlsm"}:
+        return pd.read_excel(caminho)
+
+    raise ValueError(
+        f"Formato não suportado: '{sufixo}'. Esperado .csv, .xlsx ou .xlsm."
     )
 
 

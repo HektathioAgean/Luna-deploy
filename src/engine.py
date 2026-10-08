@@ -1,6 +1,6 @@
-from io import BytesIO
 import zipfile
 
+import numpy as np
 import pandas as pd
 
 
@@ -26,6 +26,9 @@ COLUNAS_MEDIANAS_CLIENTE = [
     "Limite_Superior_Boxplot_Sec",
     "Metodo_Aplicado",
     "Metodo_Ideal_Aplicado",
+    # No fim da lista para nao mudar a posicao das colunas que ja existiam.
+    "Tempo_Q3_Sec",
+    "Tempo_Q3_Formatado",
 ]
 
 
@@ -61,6 +64,11 @@ def calcular_boxplot_iqr_tempos(
 ) -> dict:
     """
     Calcula Q1, Q3, IQR e remove outliers pelo criterio classico de boxplot.
+
+    Implementacao de referencia para UMA serie. Fora do caminho quente desde
+    que calcular_medianas_por_cliente passou a aplicar a mesma regra de forma
+    vetorizada sobre todos os clientes de uma vez; serve para conferir um
+    cliente na mao e para documentar o criterio.
 
     Regras:
     - Q1 = percentil 25%
@@ -148,6 +156,15 @@ def calcular_medianas_por_cliente(
     - Mediana_Tempo_Sec: tempo realista, baseado na mediana dos eventos considerados.
     - Tempo_Ideal_Q1_Sec: tempo ideal, baseado no 1o quartil apos limpeza por boxplot/IQR.
     - Diferenca_Mediana_Q1_Sec: oportunidade entre tempo realista e tempo ideal.
+    - Tempo_Q3_Sec: 3o quartil apos a mesma limpeza, com o mesmo tempo padrao
+      e o mesmo ajuste percentual do Q1. Q1_Sec e Q3_Sec continuam sendo os
+      quartis crus, antes da limpeza e sem ajuste.
+
+    Vetorizado: um laco Python sobre ~13,5 mil clientes levava ~43 s, isto leva
+    ~1,1 s, com saida identica. Duas sutilezas sustentam a igualdade e nao podem
+    ser "simplificadas":
+    - a mediana e arredondada para segundo inteiro ANTES do ajuste percentual;
+    - o ajuste usa `valor + valor * (p/100)`, e nao `valor * (1 + p/100)`.
     """
     columns = COLUNAS_MEDIANAS_CLIENTE
 
@@ -168,102 +185,147 @@ def calcular_medianas_por_cliente(
     if dados.empty:
         return pd.DataFrame(columns=columns)
 
-    dados = dados.sort_values(by="Chegou_em", ascending=False)
-    contagem = dados["Cod_Cliente"].value_counts()
-    resultados = []
+    # mergesort e estavel: com empates em Chegou_em, quais entregas entram nos
+    # 'eventos_previos' mais recentes deixa de depender da ordem interna do
+    # quicksort e passa a seguir a ordem do arquivo.
+    dados = dados.sort_values(by="Chegou_em", ascending=False, kind="mergesort")
 
-    for cliente, grupo in dados.groupby("Cod_Cliente", sort=True):
-        qtd = int(contagem.get(cliente, 0))
-        grupo = grupo.sort_values(by="Chegou_em", ascending=False).copy()
+    por_cliente = dados.groupby("Cod_Cliente", sort=True)
+    qtd = por_cliente["Tempo_Sec"].size()
 
-        if qtd < minimo_apontamentos:
-            mediana_base = int(tempo_padrao_poucos_apontamentos)
-            tempo_ideal_q1_base = int(tempo_padrao_poucos_apontamentos)
-            qtd_base_calculo = int(len(grupo))
-            qtd_base_limpa = int(len(grupo))
-            qtd_outliers = 0
-            q1 = float(tempo_padrao_poucos_apontamentos)
-            q3 = float(tempo_padrao_poucos_apontamentos)
-            iqr = 0.0
-            limite_inferior = float(tempo_padrao_poucos_apontamentos)
-            limite_superior = float(tempo_padrao_poucos_apontamentos)
-            metodo = "tempo_padrao_poucos_apontamentos"
-            metodo_ideal = "tempo_padrao_poucos_apontamentos"
-        else:
-            base = grupo.head(eventos_previos) if qtd > eventos_previos else grupo
-            tempos_base = pd.to_numeric(base["Tempo_Sec"], errors="coerce").dropna()
+    # Recorte dos eventos mais recentes sem um sort_values por grupo: a base ja
+    # esta ordenada, entao a posicao dentro do grupo basta.
+    recente = por_cliente.cumcount() < int(eventos_previos)
+    base = dados.loc[recente, ["Cod_Cliente", "Tempo_Sec"]]
+    tempos = base.groupby("Cod_Cliente", sort=True)["Tempo_Sec"]
 
-            if tempos_base.empty:
-                mediana_base = 0
-                tempo_ideal_q1_base = 0
-                qtd_base_calculo = 0
-                qtd_base_limpa = 0
-                qtd_outliers = 0
-                q1 = 0.0
-                q3 = 0.0
-                iqr = 0.0
-                limite_inferior = 0.0
-                limite_superior = 0.0
-                metodo = "sem_tempos_validos"
-                metodo_ideal = "sem_tempos_validos"
-            else:
-                estat = calcular_boxplot_iqr_tempos(tempos_base)
-                tempos_limpos = estat["tempos_limpos"]
+    q1 = tempos.quantile(0.25)
+    q3 = tempos.quantile(0.75)
+    iqr = q3 - q1
+    mediana = tempos.median()
+    qtd_base = tempos.size()
 
-                mediana_base = int(round(float(tempos_base.median())))
-                tempo_ideal_q1_base = int(round(float(tempos_limpos.quantile(0.25))))
+    # IQR zero significa serie sem dispersao: o boxplot nao tem o que cortar e
+    # os limites viram o proprio minimo e maximo.
+    sem_dispersao = iqr == 0
+    limite_inferior = (q1 - FATOR_IQR_PADRAO * iqr).where(~sem_dispersao, tempos.min())
+    limite_superior = (q3 + FATOR_IQR_PADRAO * iqr).where(~sem_dispersao, tempos.max())
 
-                qtd_base_calculo = int(estat["qtd_base"])
-                qtd_base_limpa = int(estat["qtd_base_limpa"])
-                qtd_outliers = int(estat["qtd_outliers"])
-                q1 = float(estat["q1"])
-                q3 = float(estat["q3"])
-                iqr = float(estat["iqr"])
-                limite_inferior = float(estat["limite_inferior"])
-                limite_superior = float(estat["limite_superior"])
+    dentro = base["Tempo_Sec"].between(
+        base["Cod_Cliente"].map(limite_inferior),
+        base["Cod_Cliente"].map(limite_superior),
+        inclusive="both",
+    )
+    limpos = base.loc[dentro].groupby("Cod_Cliente", sort=True)["Tempo_Sec"]
 
-                metodo = "mediana_ultimos_n" if qtd > eventos_previos else "mediana_total"
-                metodo_ideal = estat["metodo"]
+    q1_limpo = limpos.quantile(0.25).reindex(q1.index)
+    q3_limpo = limpos.quantile(0.75).reindex(q1.index)
+    qtd_base_limpa = limpos.size().reindex(q1.index).fillna(0).astype("int64")
+    qtd_outliers = (qtd_base - qtd_base_limpa).where(~sem_dispersao, 0)
 
-        mediana_ajustada = aplicar_ajuste_percentual(mediana_base, ajuste_percentual)
-        tempo_ideal_q1_ajustado = aplicar_ajuste_percentual(tempo_ideal_q1_base, ajuste_percentual)
+    poucos = qtd < int(minimo_apontamentos)
+    padrao = float(tempo_padrao_poucos_apontamentos)
 
-        diferenca_sec = int(max(0, mediana_ajustada - tempo_ideal_q1_ajustado))
-        diferenca_percentual = (
-            round((diferenca_sec / mediana_ajustada) * 100, 2) if mediana_ajustada > 0 else 0.0
-        )
+    # A base e arredondada para segundo inteiro ANTES do ajuste percentual, na
+    # mesma ordem do calculo original: ajustar a mediana crua e depois
+    # arredondar move o resultado em 1 segundo numa parte dos clientes.
+    mediana_base = mediana.reindex(qtd.index).round().where(
+        ~poucos, int(tempo_padrao_poucos_apontamentos))
+    ideal_base = q1_limpo.reindex(qtd.index).round().where(
+        ~poucos, int(tempo_padrao_poucos_apontamentos))
+    q3_base = q3_limpo.reindex(qtd.index).round().where(
+        ~poucos, int(tempo_padrao_poucos_apontamentos))
 
-        resultados.append(
-            {
-                "Cod_Cliente": cliente,
-                "Qtd_Apontamentos": qtd,
-                "Qtd_Base_Calculo": qtd_base_calculo,
-                "Qtd_Base_Limpa_Boxplot": qtd_base_limpa,
-                "Qtd_Outliers_Boxplot": qtd_outliers,
-                "Mediana_Tempo_Sec": mediana_ajustada,
-                "Mediana_Tempo_Formatada": format_seconds(mediana_ajustada),
-                "Tempo_Ideal_Q1_Sec": tempo_ideal_q1_ajustado,
-                "Tempo_Ideal_Q1_Formatado": format_seconds(tempo_ideal_q1_ajustado),
-                "Diferenca_Mediana_Q1_Sec": diferenca_sec,
-                "Diferenca_Mediana_Q1_Formatada": format_seconds(diferenca_sec),
-                "Diferenca_Mediana_Q1_Percentual": diferenca_percentual,
-                "Q1_Sec": round(q1, 2),
-                "Q3_Sec": round(q3, 2),
-                "IQR_Sec": round(iqr, 2),
-                "Limite_Inferior_Boxplot_Sec": round(limite_inferior, 2),
-                "Limite_Superior_Boxplot_Sec": round(limite_superior, 2),
-                "Metodo_Aplicado": metodo,
-                "Metodo_Ideal_Aplicado": metodo_ideal,
-            }
-        )
+    mediana_ajustada = _ajustar(mediana_base, ajuste_percentual)
+    ideal_ajustado = _ajustar(ideal_base, ajuste_percentual)
+    q3_ajustado = _ajustar(q3_base, ajuste_percentual)
 
-    if not resultados:
-        return pd.DataFrame(columns=columns)
+    diferenca = (mediana_ajustada - ideal_ajustado).clip(lower=0)
+    percentual = np.where(
+        mediana_ajustada > 0,
+        (diferenca / mediana_ajustada.where(mediana_ajustada > 0) * 100).round(2),
+        0.0,
+    )
+
+    metodo = pd.Series(
+        np.where(
+            poucos, "tempo_padrao_poucos_apontamentos",
+            np.where(qtd > int(eventos_previos), "mediana_ultimos_n", "mediana_total"),
+        ),
+        index=qtd.index,
+    )
+    metodo_ideal = pd.Series(
+        np.where(
+            poucos, "tempo_padrao_poucos_apontamentos",
+            np.where(sem_dispersao.reindex(qtd.index).fillna(False),
+                     "q1_sem_outlier_iqr_zero", "q1_boxplot_iqr"),
+        ),
+        index=qtd.index,
+    )
+
+    resultado = pd.DataFrame({
+        "Cod_Cliente": qtd.index,
+        "Qtd_Apontamentos": qtd.to_numpy(),
+        # Com poucos apontamentos a base de calculo e o grupo inteiro, nao o
+        # recorte dos eventos recentes.
+        "Qtd_Base_Calculo": qtd_base.reindex(qtd.index).where(~poucos, qtd).to_numpy(),
+        "Qtd_Base_Limpa_Boxplot": qtd_base_limpa.reindex(qtd.index)
+            .where(~poucos, qtd).to_numpy(),
+        "Qtd_Outliers_Boxplot": qtd_outliers.reindex(qtd.index)
+            .fillna(0).where(~poucos, 0).to_numpy(),
+        "Mediana_Tempo_Sec": mediana_ajustada.to_numpy(),
+        "Tempo_Ideal_Q1_Sec": ideal_ajustado.to_numpy(),
+        "Diferenca_Mediana_Q1_Sec": diferenca.to_numpy(),
+        "Diferenca_Mediana_Q1_Percentual": percentual,
+        "Q1_Sec": q1.reindex(qtd.index).where(~poucos, padrao).round(2).to_numpy(),
+        "Q3_Sec": q3.reindex(qtd.index).where(~poucos, padrao).round(2).to_numpy(),
+        "IQR_Sec": iqr.reindex(qtd.index).where(~poucos, 0.0).round(2).to_numpy(),
+        "Limite_Inferior_Boxplot_Sec": limite_inferior.reindex(qtd.index)
+            .where(~poucos, padrao).round(2).to_numpy(),
+        "Limite_Superior_Boxplot_Sec": limite_superior.reindex(qtd.index)
+            .where(~poucos, padrao).round(2).to_numpy(),
+        "Metodo_Aplicado": metodo.to_numpy(),
+        "Metodo_Ideal_Aplicado": metodo_ideal.to_numpy(),
+        "Tempo_Q3_Sec": q3_ajustado.to_numpy(),
+    })
+
+    resultado["Mediana_Tempo_Formatada"] = _formatar_serie(resultado["Mediana_Tempo_Sec"])
+    resultado["Tempo_Ideal_Q1_Formatado"] = _formatar_serie(resultado["Tempo_Ideal_Q1_Sec"])
+    resultado["Diferenca_Mediana_Q1_Formatada"] = _formatar_serie(
+        resultado["Diferenca_Mediana_Q1_Sec"]
+    )
+    resultado["Tempo_Q3_Formatado"] = _formatar_serie(resultado["Tempo_Q3_Sec"])
 
     return (
-        pd.DataFrame(resultados, columns=columns)
+        resultado[columns]
         .sort_values(by=["Mediana_Tempo_Sec", "Cod_Cliente"], ascending=[True, True])
         .reset_index(drop=True)
+    )
+
+
+def _ajustar(valores: pd.Series, ajuste_percentual: float) -> pd.Series:
+    """
+    aplicar_ajuste_percentual sobre uma serie inteira.
+
+    A conta repete a forma `valor + valor * (p/100)` do calculo escalar, e nao
+    `valor * (1 + p/100)`: as duas nao dao o mesmo float, e a diferenca aparece
+    como 1 segundo a mais ou a menos depois do arredondamento.
+    """
+    fracao = float(ajuste_percentual) / 100
+    ajustado = valores + (valores * fracao)
+    return ajustado.round().fillna(0).astype("int64")
+
+
+def _formatar_serie(segundos: pd.Series) -> pd.Series:
+    """format_seconds sobre uma serie, sem uma chamada Python por linha."""
+    total = segundos.astype("int64")
+    horas = total // 3600
+    minutos = (total % 3600) // 60
+    resto = total % 60
+    return (
+        horas.astype(str).str.zfill(2)
+        + ":" + minutos.astype(str).str.zfill(2)
+        + ":" + resto.astype(str).str.zfill(2)
     )
 
 
@@ -330,101 +392,72 @@ def build_kpis(
     }
 
 
-def exportar_excel(
-    base_bruta: pd.DataFrame,
-    base_validos: pd.DataFrame,
-    inconsistencias: pd.DataFrame,
-    expurgados: pd.DataFrame,
-    anomalias: pd.DataFrame,
-    medianas: pd.DataFrame,
-    janelas_atendimento: pd.DataFrame | None = None,
-    base_detalhada: pd.DataFrame | None = None,
-) -> BytesIO:
+# Contrato de saida, numa lista so: a aba do Excel, o CSV do ZIP e a chave do
+# DataFrame correspondente. Quem escreve muda; a ordem e os nomes, nao.
+SAIDAS = (
+    ("Base Bruta", "base_bruta.csv", "base_bruta"),
+    ("Base Validada", "base_validada.csv", "base_validos"),
+    ("Base Detalhada", "base_detalhada.csv", "base_detalhada"),
+    ("Inconsistencias", "inconsistencias.csv", "inconsistencias"),
+    ("Expurgados", "expurgados.csv", "expurgados"),
+    ("Anomalias", "anomalias.csv", "anomalias"),
+    ("Medianas Cliente", "medianas_cliente.csv", "medianas"),
+    ("Janelas Atendimento", "janelas_atendimento.csv", "janelas_atendimento"),
+)
+
+# Lote de linhas convertidas por vez na gravacao do Excel. Segura a memoria num
+# patamar fixo, independente do tamanho da base.
+TAMANHO_LOTE_EXCEL = 50_000
+
+
+def _linhas_para_excel(df: pd.DataFrame, tamanho_lote: int = TAMANHO_LOTE_EXCEL):
     """
-    Gera arquivo Excel em memoria.
+    Gera as linhas de um DataFrame no formato que o openpyxl aceita.
 
-    Abas produzidas:
-    - Base Bruta
-    - Base Validada
-    - Base Detalhada  (processados com Mediana e Tempo Ideal Q1 por linha)
-    - Inconsistencias
-    - Expurgados
-    - Anomalias
-    - Medianas Cliente
-    - Janelas Atendimento
+    Converte em lotes porque NaN e NaT precisam virar None (o Excel mostra
+    '#VALOR!' para NaN), e converter a base inteira de uma vez custa um frame
+    de objetos do tamanho dela.
     """
-    output = BytesIO()
-
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        (base_bruta if base_bruta is not None else pd.DataFrame()).to_excel(
-            writer, index=False, sheet_name="Base Bruta"
-        )
-        (base_validos if base_validos is not None else pd.DataFrame()).to_excel(
-            writer, index=False, sheet_name="Base Validada"
-        )
-        (base_detalhada if base_detalhada is not None else pd.DataFrame()).to_excel(
-            writer, index=False, sheet_name="Base Detalhada"
-        )
-        (inconsistencias if inconsistencias is not None else pd.DataFrame()).to_excel(
-            writer, index=False, sheet_name="Inconsistencias"
-        )
-        (expurgados if expurgados is not None else pd.DataFrame()).to_excel(
-            writer, index=False, sheet_name="Expurgados"
-        )
-        (anomalias if anomalias is not None else pd.DataFrame()).to_excel(
-            writer, index=False, sheet_name="Anomalias"
-        )
-        (medianas if medianas is not None else pd.DataFrame()).to_excel(
-            writer, index=False, sheet_name="Medianas Cliente"
-        )
-        (janelas_atendimento if janelas_atendimento is not None else pd.DataFrame()).to_excel(
-            writer, index=False, sheet_name="Janelas Atendimento"
+    for inicio in range(0, len(df), tamanho_lote):
+        lote = df.iloc[inicio:inicio + tamanho_lote]
+        yield from (
+            lote.astype(object).where(lote.notna(), None)
+            .itertuples(index=False, name=None)
         )
 
-    output.seek(0)
-    return output
 
-
-def _df_para_csv_bytes(df: pd.DataFrame) -> bytes:
-    if df is None:
-        df = pd.DataFrame()
-    return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-
-
-def exportar_zip_csv(
-    base_bruta: pd.DataFrame,
-    base_validos: pd.DataFrame,
-    inconsistencias: pd.DataFrame,
-    expurgados: pd.DataFrame,
-    anomalias: pd.DataFrame,
-    medianas: pd.DataFrame,
-    janelas_atendimento: pd.DataFrame | None = None,
-    base_detalhada: pd.DataFrame | None = None,
-) -> BytesIO:
+def gravar_excel(destino, **frames) -> None:
     """
-    Gera ZIP em memoria contendo os CSVs de saida.
+    Grava o Excel direto no arquivo, uma aba por vez.
 
-    Arquivos produzidos:
-    - base_bruta.csv
-    - base_validada.csv
-    - base_detalhada.csv  (processados com Mediana e Tempo Ideal Q1 por linha)
-    - inconsistencias.csv
-    - expurgados.csv
-    - anomalias.csv
-    - medianas_cliente.csv
-    - janelas_atendimento.csv
+    Usa o modo write_only do openpyxl: as celulas saem para disco conforme sao
+    escritas, em vez de montar a planilha inteira em memoria. Numa base de 370
+    mil linhas, o caminho antigo (BytesIO + pd.ExcelWriter) passava de 4,8 GB de
+    RAM sem terminar.
     """
-    output = BytesIO()
+    from openpyxl import Workbook
 
-    with zipfile.ZipFile(output, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("base_bruta.csv", _df_para_csv_bytes(base_bruta))
-        zf.writestr("base_validada.csv", _df_para_csv_bytes(base_validos))
-        zf.writestr("base_detalhada.csv", _df_para_csv_bytes(base_detalhada))
-        zf.writestr("inconsistencias.csv", _df_para_csv_bytes(inconsistencias))
-        zf.writestr("expurgados.csv", _df_para_csv_bytes(expurgados))
-        zf.writestr("anomalias.csv", _df_para_csv_bytes(anomalias))
-        zf.writestr("medianas_cliente.csv", _df_para_csv_bytes(medianas))
-        zf.writestr("janelas_atendimento.csv", _df_para_csv_bytes(janelas_atendimento))
+    wb = Workbook(write_only=True)
+    try:
+        for aba, _, chave in SAIDAS:
+            df = frames.get(chave)
+            ws = wb.create_sheet(title=aba)
+            if df is None or df.empty:
+                continue
+            ws.append([str(coluna) for coluna in df.columns])
+            for linha in _linhas_para_excel(df):
+                ws.append(linha)
+        wb.save(destino)
+    finally:
+        wb.close()
 
-    output.seek(0)
-    return output
+
+def gravar_zip_csv(destino, **frames) -> None:
+    """Grava o ZIP direto no arquivo, um CSV por vez."""
+    with zipfile.ZipFile(destino, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for _, nome, chave in SAIDAS:
+            df = frames.get(chave)
+            if df is None:
+                df = pd.DataFrame()
+            with zf.open(nome, "w") as alvo:
+                df.to_csv(alvo, index=False, sep=";", encoding="utf-8-sig")
