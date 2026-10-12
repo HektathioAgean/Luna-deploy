@@ -128,6 +128,56 @@ public class JanelasTests
     }
 
     [Fact]
+    public void Janela_pela_finalizacao_igual_ao_motor_python()
+    {
+        // Mesmos atendimentos lidos por Finalizada_em e por Chegou_em: a base
+        // muda a janela e o campo Base_Janela. Valores de
+        // calcular_janelas_entrega(..., 0.8, usar_coluna) do Python.
+        DateTimeOffset D(string texto) => DateTimeOffset.ParseExact(texto, "yyyy-MM-dd HH:mm:ss",
+            CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
+        (string Cliente, string Chegou, string Finalizada)[] atendimentos =
+        [
+            ("F1", "2026-01-01 23:40:00", "2026-01-02 00:10:00"),
+            ("F1", "2026-01-02 23:50:00", "2026-01-03 00:20:30"),
+            ("F1", "2026-01-03 08:00:00", "2026-01-03 08:30:00"),
+            ("F2", "2026-01-01 10:00:00", "2026-01-01 10:45:00"),
+            ("F2", "2026-01-02 10:30:00", "2026-01-02 11:00:00"),
+        ];
+
+        var pelaFinalizacao = JanelasDeAtendimento.Calcular(
+            atendimentos.Select(a => new RegistroHorario(a.Cliente, D(a.Finalizada))), 0.8, "Finalizada_em");
+        Assert.Equal(
+        [
+            new JanelaCliente("F1", 3, 10.0, 510.0, "00:10", "08:30", 500.0, "80%", "100.0%", 1.0,
+                "Nao", "Noturno", "Nao", "Finalizada_em"),
+            new JanelaCliente("F2", 2, 645.0, 660.0, "10:45", "11:00", 15.0, "80%", "100.0%", 1.0,
+                "Nao", "Diurno", "Sim", "Finalizada_em"),
+        ], pelaFinalizacao);
+
+        var pelaChegada = JanelasDeAtendimento.Calcular(
+            atendimentos.Select(a => new RegistroHorario(a.Cliente, D(a.Chegou))), 0.8, "Chegou_em");
+        Assert.Equal(
+        [
+            new JanelaCliente("F1", 3, 1420.0, 480.0, "23:40", "08:00", 500.0, "80%", "100.0%", 1.0,
+                "Sim", "Noturno", "Nao", "Chegou_em"),
+            new JanelaCliente("F2", 2, 600.0, 630.0, "10:00", "10:30", 30.0, "80%", "100.0%", 1.0,
+                "Nao", "Diurno", "Sim", "Chegou_em"),
+        ], pelaChegada);
+    }
+
+    // Valores de calcular_janela_circular_minima do Python.
+    [Theory]
+    [InlineData(new[] { 600.0, 600.0, 600.0, 600.0 }, 0.8, 1.0)]
+    [InlineData(new[] { 600.0, 600.0, 600.0, 900.0 }, 0.5, 0.75)]
+    [InlineData(new[] { 600.0, 600.0, 900.0, 900.0 }, 0.5, 0.5)]
+    public void Horarios_repetidos_dao_largura_zero_e_contam_todos_os_iguais(
+        double[] minutos, double cobertura, double coberturaReal)
+    {
+        var janela = JanelaCircular.Calcular(minutos, cobertura);
+        Assert.Equal(new JanelaCircular(600.0, 600.0, 0.0, coberturaReal, false), janela);
+    }
+
+    [Fact]
     public void Unico_horario_e_entradas_vazias()
     {
         Assert.Equal(new JanelaCircular(620, 620, 0.0, 1.0, false), JanelaCircular.Calcular([620], 0.8));
