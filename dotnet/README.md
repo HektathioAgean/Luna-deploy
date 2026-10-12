@@ -57,6 +57,12 @@ CR/LF/CRLF, campo a mais/a menos, índice implícito), o cabeçalho do
 `read_csv` (`NULL`, `NA`, `#N/A`, `None`, vazio...). Mensagens iguais às do
 Python.
 
+**Memória (ressalva da revisão do PR6):** o CSV ainda é materializado por
+inteiro: o arquivo é lido em memória (`File.ReadAllBytes`), decodificado
+para uma `string` e tokenizado numa `TabelaBruta` com todas as linhas antes
+do processamento. Não há medição de pico de memória nem de tempo em base
+grande; **benchmark obrigatório antes da distribuição**.
+
 **PR6b (planejado):** leitura de `.xlsx`/`.xlsm` com o comportamento do
 `read_excel_safely` + openpyxl (código do cliente como texto, formato `00000`,
 datas pelo formato da célula, época 1900/1904). Até lá, o C# recusa Excel
