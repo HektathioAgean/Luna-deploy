@@ -52,10 +52,12 @@ public class DominioTests
     [InlineData("ar-SA")]
     public void Resultado_nao_depende_da_cultura_do_sistema(string cultura)
     {
-        var original = CultureInfo.CurrentCulture;
+        var culturaOriginal = CultureInfo.CurrentCulture;
+        var culturaUiOriginal = CultureInfo.CurrentUICulture;
         try
         {
-            CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = new CultureInfo(cultura);
+            CultureInfo.CurrentCulture = new CultureInfo(cultura);
+            CultureInfo.CurrentUICulture = new CultureInfo(cultura);
             Contrato.MesmoDouble(2.67, Arredondamento.CasasPython(2.675, 2), cultura);
             Contrato.MesmoDouble(2.68, Arredondamento.CasasNumpy(2.675, 2), cultura);
             Assert.Equal("00:18:22", Formatacao.HhMmSs(1102.5));
@@ -63,8 +65,8 @@ public class DominioTests
         }
         finally
         {
-            CultureInfo.CurrentCulture = original;
-            CultureInfo.CurrentUICulture = original;
+            CultureInfo.CurrentCulture = culturaOriginal;
+            CultureInfo.CurrentUICulture = culturaUiOriginal;
         }
     }
 }
