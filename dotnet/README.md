@@ -27,6 +27,28 @@ PR3 — `TemposPorCliente` (21 campos na ordem do contrato), `Boxplot` (IQR
 ajuste depois do arredondamento, gap e percentual (2 casas do numpy) e `Kpis`.
 Códigos de cliente comparados e ordenados de forma ordinal.
 
+PR4 — janela circular (`JanelaCircular`, `JanelasDeAtendimento`, 14 campos na
+ordem do contrato): minutos desde a meia-noite (segundos/60, sem fração de
+segundo), menor arco com `max(1, ⌈n·cobertura⌉)` pontos em double, primeira
+menor largura vence o empate, cobertura real circular com tolerância 1e-9,
+resto com o sinal do divisor (`%` do Python), `HH:MM` half-even, período e
+horário comercial pelo centro circular, largura e cobertura com o `round` do
+Python. Histórico completo do cliente (diretriz F9).
+
+## Pendências registradas para o PR5
+
+- **Ordenação de códigos de cliente:** o Python ordena `str` por code point
+  Unicode; o C# usa `StringComparer.Ordinal` (unidades UTF-16). Os dois só
+  divergem quando um código tem caractere fora do BMP (par substituto,
+  U+D800–U+DFFF em UTF-16) e outro tem caractere entre U+E000 e U+FFFF na
+  mesma posição. Afeta a ordem das linhas de `TemposPorCliente` (desempate
+  por código) e de `JanelasDeAtendimento`. Os códigos atuais são ASCII; no
+  PR5, junto com a normalização do código, decidir entre um comparador por
+  code point ou a rejeição de códigos fora do BMP, com teste.
+- **Espaços nas pontas do código:** o Python usa `str.strip()` (espaços
+  Unicode do Python); o C# usa `string.Trim()`. Diferem em poucos caracteres
+  de controle (ex.: U+001C–U+001F). Tratar junto com a normalização.
+
 ## Build e testes
 
 SDK fixado em `global.json` (10.0.401, aceita feature bands mais novas).
