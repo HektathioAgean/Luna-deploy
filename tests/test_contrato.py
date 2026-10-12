@@ -41,3 +41,32 @@ def test_versoes_dos_pacotes_sao_as_do_contrato():
     # parser de data: o contrato so vale com as versoes travadas.
     gravado = json.loads((CONTRATO / "MANIFEST.json").read_text(encoding="utf-8"))
     assert {nome: version(nome) for nome in PACOTES} == gravado["pacotes"]
+
+
+def test_contrato_distingue_os_algoritmos_de_quantil_e_mediana():
+    # O contrato so trava o algoritmo do motor se tiver casos em que os
+    # candidatos dao doubles diferentes.
+    import math
+
+    import pandas as pd
+
+    from tests.gerar_contrato import MEDIANAS_AMOSTRAS, QUANTIS_AMOSTRAS
+
+    def lerp_motor(valores, p):
+        s = sorted(valores)
+        idx = p * (len(s) - 1)
+        baixo = math.floor(idx)
+        if baixo + 1 >= len(s):
+            return s[baixo]
+        return s[baixo] + (s[baixo + 1] - s[baixo]) * (idx % 1)
+
+    assert any(
+        lerp_motor(a, p) != float(pd.Series(a).quantile(p))
+        for a in QUANTIS_AMOSTRAS for p in (0.25, 0.75)
+    )
+    pares = [sorted(a) for a in MEDIANAS_AMOSTRAS if len(a) % 2 == 0]
+    assert any(
+        (s[len(s) // 2 - 1] + s[len(s) // 2]) / 2
+        != s[len(s) // 2 - 1] + (s[len(s) // 2] - s[len(s) // 2 - 1]) / 2
+        for s in pares
+    )
