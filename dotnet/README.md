@@ -8,7 +8,10 @@ substituição ser aprovada.
 | Projeto | Conteúdo | Dependências |
 |---|---|---|
 | `src/Luna.Domain` | regras e funções matemáticas puras | nenhuma (só BCL) |
+| `src/Luna.Application` | caso de uso `ProcessarBase`, `ParametrosProcessamento`, porta `ILeitorDeBase` | Domain |
+| `src/Luna.Infrastructure` | `CarregadorDeArquivo`, leitura de CSV | Application |
 | `tests/Luna.Domain.Tests` | testes de unidade e paridade com o contrato | xUnit |
+| `tests/Luna.Integration.Tests` | leitura de arquivo e fluxo ponta a ponta contra o Python | xUnit |
 
 ## Estado
 
@@ -43,6 +46,22 @@ exatas do motor (serial do Excel, fuso misto, fuso numa coluna só),
 `CodigoCliente` (zeros à esquerda preservados), `EsquemaColunas` (aliases,
 `__dupN`, análise) e `Transformacao` (texto bruto → registro classificado).
 `TextoPython` dá a semântica do Python a `strip`, `lower` e à ordenação.
+
+PR6 — importação local e fluxo ponta a ponta. `ProcessarBase` repete o
+`_executar` do Python: leitura, base vazia, padronização e validação das
+colunas, transformação, tempos por cliente, KPIs e janelas. `LeitorCsv` é o
+`read_csv_safely`: seis tentativas de separador × encoding e, em cada uma, a
+porta do tokenizer C do pandas 2.3.3 (aspas, linhas vazias e só com espaço,
+CR/LF/CRLF, campo a mais/a menos, índice implícito), o cabeçalho do
+`parsers.pyx` (`Unnamed: i`, duplicatas `.N`) e os marcadores de nulo do
+`read_csv` (`NULL`, `NA`, `#N/A`, `None`, vazio...). Mensagens iguais às do
+Python.
+
+**PR6b (planejado):** leitura de `.xlsx`/`.xlsm` com o comportamento do
+`read_excel_safely` + openpyxl (código do cliente como texto, formato `00000`,
+datas pelo formato da célula, época 1900/1904). Até lá, o C# recusa Excel
+com mensagem pedindo o CSV. Depende da aprovação da biblioteca de leitura
+(proposta: DocumentFormat.OpenXml, MIT).
 
 ## Equivalência Unicode (resolvida no PR5)
 
@@ -106,6 +125,14 @@ Sem efeito em alias ou resultado, ou fora do escopo:
 - **Célula numérica do Excel em coluna de data ou de código:** fora do PR5
   (a importação de arquivos é do PR6). O domínio recebe texto,
   `DateTime` nativo ou nulo.
+- **CSV, casos de borda do tokenizer:** o pandas lê o arquivo em blocos;
+  o C# lê o arquivo inteiro. Só muda num caso patológico: arquivo com fim de
+  linha só CR e uma linha que começa com espaço/tab seguido de dado (o C do
+  pandas volta até o último `
+` do bloco). A mensagem de "Último erro" para
+  falha de decodificação UTF-8 também não é reproduzida (só aparece se as
+  seis tentativas falharem, e a última é cp1252, cuja mensagem é a do Python).
+- **Excel (`.xlsx`/`.xlsm`):** recusado até o PR6b.
 - **Fuso numa coluna e nenhuma data ISO na outra:** o Python quebra com o
   `TypeError` do pandas na subtração; o C# para no mesmo ponto, com a mesma
   mensagem (`Cannot subtract tz-naive and tz-aware datetime-like objects`).
