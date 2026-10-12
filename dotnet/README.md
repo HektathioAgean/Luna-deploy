@@ -79,12 +79,24 @@ conferem o SHA-256 de cada arquivo contra o `MANIFEST.json`.
   `Int128` e não estoura; dentro do int64 o resultado é o do pandas, bit a
   bit, inclusive o arredondamento acima de 2⁵³ ns.
 
-## Divergências conhecidas com o Python (decisão pendente ou fora do escopo)
+## Divergências conhecidas com o Python
+
+Intencionais (decididas na revisão do PR5):
 
 - **`now` e `today`:** o pandas troca esses textos pela data e hora da
-  máquina (inclusive no `strptime`). O C# não os lê (ficam como data
-  inválida): replicar tornaria o resultado dependente do relógio. Decisão
-  de negócio pendente.
+  máquina (inclusive no `strptime`). O C# os deixa como data inválida
+  (`datetime_invalido | tempo_nulo`) e devolve um aviso com a coluna e as
+  linhas (`ResultadoTransformacao.Avisos`): o relógio da máquina não serve
+  para completar data histórica.
+- **Fuso acima de ±14:00:** o pandas 2.3.3 aceita offset até ±23:59 (ex.:
+  `+14:30`, `+15:00`, `-15:00`, com a hora local mantida); o
+  `DateTimeOffset` só representa até ±14:00. O C# rejeita a base com a
+  coluna e as linhas (`FormatoDeDataException`), sem mudar o horário. Se a
+  coluna também mistura fusos, vale antes a mensagem de fuso misto, como no
+  Python.
+
+Sem efeito em alias ou resultado, ou fora do escopo:
+
 - **Sigma final:** `str.lower()` do Python faz `Σ` final virar `ς`; o C#
   dá `σ`. Afeta só o texto normalizado do cabeçalho, nunca o alias (todos
   ASCII).

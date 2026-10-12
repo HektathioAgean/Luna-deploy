@@ -27,7 +27,7 @@ public class DatasTests
             .ToList();
         var esperado = Contrato.Linhas($"transformacao/{caso}_esperado.csv").ToList();
 
-        var obtido = Transformacao.Transformar(entrada, Padrao);
+        var obtido = Transformacao.Transformar(entrada, Padrao).Registros;
 
         Assert.Equal(esperado.Count, obtido.Count);
         for (int i = 0; i < obtido.Count; i++)
@@ -71,7 +71,7 @@ public class DatasTests
             .Select(l => l.TrimStart('\uFEFF').Split(';'))
             .Select(c => new RegistroBruto(c[0], c[1], c[2]))
             .ToList();
-        var classificados = Transformacao.Transformar(registros, Padrao);
+        var classificados = Transformacao.Transformar(registros, Padrao).Registros;
 
         // Golden de inconsistências: mesmo motivo e tempo, na ordem do arquivo.
         var golden = File.ReadAllLines(Path.Combine(Contrato.Caminho(".."), "golden", "inconsistencias.csv"))
@@ -297,11 +297,72 @@ public class DatasTests
     }
 
     [Fact]
-    public void Now_e_today_ficam_nulos_divergencia_registrada()
+    public void Now_e_today_ficam_invalidos_com_aviso_das_linhas()
     {
-        // O pandas troca "now"/"today" pelo relógio da máquina; o C# não lê.
-        var datas = InterpretacaoDatas.ConverterPar(["now", " today "], ["2026-03-02 09:10", "2026-03-02 09:10"]);
-        Assert.All(datas.ChegouEm, d => Assert.Null(d));
+        // Divergência intencional: o pandas troca "now"/"today" pelo relógio
+        // da máquina; para data histórica isso não serve.
+        var resultado = Transformacao.Transformar(
+        [
+            new RegistroBruto("A", "now", "2026-03-02 09:10"),
+            new RegistroBruto("A", "2026-03-02 09:00", "2026-03-02 09:10"),
+            new RegistroBruto("A", " today ", "2026-03-02 09:10"),
+            new RegistroBruto("A", "2026-03-02 09:00", "now"),
+        ], Padrao);
+
+        Assert.Equal(
+            ["datetime_invalido | tempo_nulo", "", "datetime_invalido | tempo_nulo", "datetime_invalido | tempo_nulo"],
+            resultado.Registros.Select(r => r.MotivoInconsistencia));
+        Assert.Equal(
+        [
+            "A coluna Chegou_em tem 'now' ou 'today' nas linhas 2, 4. Datas relativas ao relogio ficam como data invalida (datetime_invalido).",
+            "A coluna Finalizada_em tem 'now' ou 'today' nas linhas 5. Datas relativas ao relogio ficam como data invalida (datetime_invalido).",
+        ], resultado.Avisos);
+    }
+
+    [Fact]
+    public void Base_sem_now_today_nao_tem_avisos()
+        => Assert.Empty(Transformacao.Transformar([new RegistroBruto("A", "2026-03-02 09:00", "2026-03-02 09:10")], Padrao).Avisos);
+
+    // O pandas 2.3.3 aceita offset até ±23:59 (hora local mantida, 1200 s);
+    // DateTimeOffset só até ±14:00. Fora disso: rejeita com as linhas, sem
+    // mudar o horário (divergência registrada no README).
+    [Theory]
+    [InlineData("+14:00")]
+    [InlineData("-14:00")]
+    [InlineData("+1400")]
+    public void Offset_ate_14_horas_e_aceito_como_no_pandas(string offset)
+    {
+        var datas = InterpretacaoDatas.ConverterPar([$"2026-03-02T09:00:00{offset}"], [$"2026-03-02T09:20:00{offset}"]);
+        Assert.Equal(9, datas.ChegouEm[0]!.Value.Hour);
+        Assert.Equal(1200.0, Classificacao.TempoEmSegundos(datas.ChegouEm[0], datas.FinalizadaEm[0]));
+    }
+
+    [Theory]
+    [InlineData("+14:30")]
+    [InlineData("+15:00")]
+    [InlineData("-15:00")]
+    [InlineData("+23:59")]
+    [InlineData("+15")]
+    public void Offset_acima_de_14_horas_e_rejeitado_com_as_linhas(string offset)
+    {
+        var erro = Assert.Throws<FormatoDeDataException>(() => InterpretacaoDatas.ConverterPar(
+            ["2026-03-02T08:00:00" + offset, "2026-03-02T09:00:00" + offset],
+            ["2026-03-02T08:20:00" + offset, "2026-03-02T09:20:00" + offset]));
+        Assert.Equal(
+            "A coluna Chegou_em tem fuso fora da faixa de -14:00 a +14:00 nas linhas 2, 3. " +
+            "O Luna nao representa esse fuso; corrija o fuso dessas linhas antes de processar.",
+            erro.Message);
+    }
+
+    [Fact]
+    public void Offset_fora_da_faixa_misturado_com_outro_fuso_da_o_erro_do_python()
+    {
+        // Fusos diferentes na coluna: o pandas já rejeita, e essa mensagem vem primeiro.
+        var erro = Assert.Throws<FormatoDeDataException>(() => InterpretacaoDatas.ConverterPar(
+            ["2026-03-02T08:00:00+15:00", "2026-03-02T09:00:00-03:00"],
+            ["2026-03-02T08:20:00+15:00", "2026-03-02T09:20:00-03:00"]));
+        Assert.Equal("A coluna Chegou_em mistura fusos horarios diferentes. Padronize o fuso da base antes de processar.",
+            erro.Message);
     }
 
     // Valores de transform_base do Python (Cod_Cliente depois da normalização).

@@ -10,11 +10,16 @@ namespace Luna.Domain;
 /// </summary>
 public sealed class FormatoDeDataException(string mensagem) : Exception(mensagem);
 
-/// <summary>Datas das duas colunas e as linhas válidas só na convenção dd/mm ou mm/dd que perdeu.</summary>
+/// <summary>
+/// Datas das duas colunas, as linhas válidas só na convenção dd/mm ou mm/dd
+/// que perdeu e avisos de leitura (linhas tratadas de forma diferente do
+/// motor Python, de propósito).
+/// </summary>
 public sealed record DatasConvertidas(
     IReadOnlyList<DateTimeOffset?> ChegouEm,
     IReadOnlyList<DateTimeOffset?> FinalizadaEm,
-    IReadOnlyList<bool> FormatoDivergente);
+    IReadOnlyList<bool> FormatoDivergente,
+    IReadOnlyList<string> Avisos);
 
 /// <summary>
 /// Interpretação conjunta de Chegou_em e Finalizada_em
@@ -26,6 +31,7 @@ public static partial class InterpretacaoDatas
     private const double SerialMinimo = 20_000;
     private const double SerialMaximo = 80_000;
     private static readonly TimeSpan DuracaoMaximaPlausivel = TimeSpan.FromDays(1);
+    private const int OffsetMaximoMinutos = 14 * 60;
 
     [GeneratedRegex(@"(?:Z|[+-]\d{2}:?\d{2})$")]
     private static partial Regex ComFuso();
@@ -41,8 +47,13 @@ public static partial class InterpretacaoDatas
     /// <item>rejeita fuso numa coluna e não na outra;</item>
     /// <item>completa o que não é ISO com dd/mm e, se preciso, mm/dd; vence a convenção com mais atendimentos de 0 a 24 h; dd/mm no empate.</item>
     /// </list>
-    /// Os textos "now" e "today" ficam nulos (nenhum dos formatos os lê); o
-    /// pandas os troca pelo relógio da máquina (divergência registrada no README).
+    /// Divergências intencionais com o Python (registradas no README):
+    /// <list type="bullet">
+    /// <item>"now" e "today" ficam como data inválida, com aviso das linhas; o
+    /// pandas os troca pelo relógio da máquina, o que não serve para data histórica;</item>
+    /// <item>fuso fora de ±14:00 é rejeitado com as linhas; o pandas aceita até
+    /// ±23:59, mas <see cref="DateTimeOffset"/> não representa, e o horário não é alterado em silêncio.</item>
+    /// </list>
     /// </summary>
     /// <exception cref="FormatoDeDataException">Base com datas ambíguas.</exception>
     public static DatasConvertidas ConverterPar(
@@ -53,6 +64,10 @@ public static partial class InterpretacaoDatas
     {
         if (chegou.Count != finalizada.Count)
             throw new ArgumentException("As duas colunas precisam ter o mesmo número de linhas.");
+
+        var avisos = new List<string>();
+        AvisarRelogio(chegou, nomeChegou, avisos);
+        AvisarRelogio(finalizada, nomeFinalizada, avisos);
 
         var isoChegou = ConverterIso(chegou, nomeChegou);
         var isoFinalizada = ConverterIso(finalizada, nomeFinalizada);
@@ -74,7 +89,7 @@ public static partial class InterpretacaoDatas
         bool[] validoBr = Plausiveis(br.Item1, br.Item2);
         // Base toda válida em dd/mm: mm/dd não tem como ganhar.
         if (validoBr.All(v => v))
-            return new DatasConvertidas(br.Item1, br.Item2, new bool[chegou.Count]);
+            return new DatasConvertidas(br.Item1, br.Item2, new bool[chegou.Count], avisos);
 
         var us = (Completar(chegou, isoChegou.Valores, ParserDataBarra.FormatosUs),
                   Completar(finalizada, isoFinalizada.Valores, ParserDataBarra.FormatosUs));
@@ -85,7 +100,7 @@ public static partial class InterpretacaoDatas
         bool[] validoEscolhida = usVence ? validoUs : validoBr;
         bool[] validoOutra = usVence ? validoBr : validoUs;
         bool[] divergente = validoEscolhida.Select((v, i) => !v && validoOutra[i]).ToArray();
-        return new DatasConvertidas(escolhida.Item1, escolhida.Item2, divergente);
+        return new DatasConvertidas(escolhida.Item1, escolhida.Item2, divergente, avisos);
     }
 
     private sealed record ColunaIso(DateTimeOffset?[] Valores, bool ComFuso)
@@ -98,7 +113,7 @@ public static partial class InterpretacaoDatas
     {
         RejeitarFormatosAmbiguos(valores, nome);
 
-        var datas = new DateTimeOffset?[valores.Count];
+        var lidas = new DataLida?[valores.Count];
         var offsets = new HashSet<int>();
         bool algumSemFuso = false;
         for (int i = 0; i < valores.Count; i++)
@@ -112,7 +127,7 @@ public static partial class InterpretacaoDatas
             };
             if (lida is not { } valor)
                 continue;
-            datas[i] = valor.ParaDateTimeOffset();
+            lidas[i] = valor;
             if (valor.OffsetMinutos is int offset)
                 offsets.Add(offset);
             else
@@ -126,7 +141,32 @@ public static partial class InterpretacaoDatas
             throw new FormatoDeDataException(
                 $"A coluna {nome} mistura fusos horarios diferentes. Padronize o fuso da base antes de processar.");
         }
-        return new ColunaIso(datas, offsets.Count == 1);
+
+        // O pandas aceita offset até ±23:59; DateTimeOffset só até ±14:00.
+        // Rejeita em vez de mudar o horário (divergência registrada no README).
+        bool[] foraDaFaixa = lidas.Select(l => l?.OffsetMinutos is int o && Math.Abs(o) > OffsetMaximoMinutos).ToArray();
+        if (foraDaFaixa.Any(f => f))
+        {
+            throw new FormatoDeDataException(
+                $"A coluna {nome} tem fuso fora da faixa de -14:00 a +14:00 nas linhas {LinhasDoArquivo(foraDaFaixa)}. " +
+                "O Luna nao representa esse fuso; corrija o fuso dessas linhas antes de processar.");
+        }
+        return new ColunaIso(lidas.Select(l => l?.ParaDateTimeOffset()).ToArray(), offsets.Count == 1);
+    }
+
+    /// <summary>
+    /// "now" e "today" (depois de tirar os espaços das pontas): o pandas usaria
+    /// o relógio da máquina; aqui viram data inválida, com aviso das linhas.
+    /// </summary>
+    private static void AvisarRelogio(IReadOnlyList<object?> valores, string nome, List<string> avisos)
+    {
+        bool[] relogio = valores.Select(v => v is string t && TextoPython.Strip(t) is "now" or "today").ToArray();
+        if (relogio.Any(r => r))
+        {
+            avisos.Add(
+                $"A coluna {nome} tem 'now' ou 'today' nas linhas {LinhasDoArquivo(relogio)}. " +
+                "Datas relativas ao relogio ficam como data invalida (datetime_invalido).");
+        }
     }
 
     private static DataLida? DeDateTime(DateTime nativa)
