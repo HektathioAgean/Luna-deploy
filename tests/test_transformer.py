@@ -155,3 +155,35 @@ def test_base_americana_vence_quando_gera_mais_atendimentos_validos():
 def test_empate_entre_convencoes_fica_com_dia_mes():
     validos, _ = transform_base(base(["03/10/2026 08:00"], ["03/10/2026 08:20"]))
     assert validos["Chegou_em"].tolist() == [pd.Timestamp("2026-10-03 08:00")]
+
+
+# -- Fusos: Z misturado com horario sem fuso ----------------------------------
+
+def test_z_misturado_com_horario_sem_fuso_e_rejeitado_com_as_linhas():
+    with pytest.raises(ValueError, match=r"Chegou_em.*linha.* 3"):
+        datas("2026-03-02T09:15:00Z", "2026-03-02 09:15:00", "2026-03-02T10:15:00Z")
+
+
+def test_coluna_so_com_z_e_aceita():
+    assert datas("2026-03-02T09:15:00Z")[0] == pd.Timestamp("2026-03-02 09:15:00", tz="UTC")
+
+
+def test_coluna_so_com_um_offset_mantem_a_hora_local():
+    assert datas("2026-03-02T09:15:00-03:00")[0].hour == 9
+
+
+def test_chegada_com_fuso_e_finalizacao_sem_fuso_e_rejeitada():
+    with pytest.raises(ValueError, match="fuso"):
+        transform_base(base(["2026-03-02T09:00:00Z"], ["2026-03-02 09:10:00"]))
+
+
+# -- Serial do Excel em vez de data -------------------------------------------
+
+def test_serial_do_excel_em_texto_e_rejeitado_com_mensagem():
+    with pytest.raises(ValueError, match=r"serial do Excel.*linha.* 2"):
+        transform_base(base(["46083.375"], ["46083.3819"]))
+
+
+def test_serial_do_excel_numerico_e_rejeitado_com_mensagem():
+    with pytest.raises(ValueError, match="serial do Excel"):
+        transform_base(base([46083.375], [46083.3819]))

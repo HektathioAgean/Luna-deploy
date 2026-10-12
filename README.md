@@ -74,18 +74,52 @@ devolve uma coluna só.
 O CSV é lido todo como texto, para que um código de cliente como `00123` não
 vire o número `123`.
 
+No Excel, a coluna do código do cliente (reconhecida pelos mesmos apelidos da
+padronização) também sai como texto: `00123` e `123` são clientes diferentes.
+Regra para célula **numérica**: se o formato da célula for só zeros (`00000`),
+os zeros à esquerda são recuperados (`123` com formato `00000` vira `00123`);
+com qualquer outro formato, fica o número sem zeros (`123`). Quem precisa de
+zeros num código guardado como número deve formatar a coluna como `00000` ou
+gravá-la como texto. As demais colunas ficam com o tipo da célula.
+
 As datas de `Chegou_em` e `Finalizada_em` são aceitas em ISO
 (`2026-03-02 09:15:00`) e em `dd/mm/aaaa`, com ou sem segundos, inclusive
 misturadas na mesma coluna. A convenção `dd/mm` ou `mm/dd` é decidida uma vez
 para as duas colunas juntas: vence a que gera mais atendimentos com duração
 entre zero e um dia, e `dd/mm` vence o empate. Uma linha que só seria válida
 na convenção perdedora vai para inconsistências como `data_formato_divergente`,
-em vez de virar a coluna inteira. Fusos horários diferentes na mesma coluna
-interrompem o processamento com mensagem.
+em vez de virar a coluna inteira.
+
+Datas que não dá para ler sem adivinhar **interrompem o processamento** com a
+coluna e as linhas do arquivo na mensagem, em vez de serem convertidas em
+silêncio:
+
+- fusos diferentes na mesma coluna (`-03:00` e `-02:00`);
+- horário com fuso (`Z`, `-03:00`) misturado com horário sem fuso, na mesma
+  coluna ou entre `Chegou_em` e `Finalizada_em`. Coluna homogênea é aceita: só
+  `Z`, só um offset (a hora local é mantida) ou só sem fuso;
+- número serial do Excel (`46083,375`) no lugar da data, comum em CSV exportado
+  de planilha. Exporte as datas como texto ou use o `.xlsx` original.
 
 Na escolha dos últimos N atendimentos, chegadas empatadas em `Chegou_em` são
 desempatadas pelo maior `Tempo_Sec`, então o resultado não depende da ordem das
 linhas no arquivo.
+
+### Diretrizes provisórias do método
+
+Decididas na revalidação de 12/10/2026, até haver backtesting com dados reais:
+
+- **Tempo ideal Q1** é uma **referência estatística** (1º quartil depois da
+  limpeza por IQR), não um tempo operacional validado. O tempo de planejamento
+  continua sendo a mediana.
+- **Duplicatas** não são removidas automaticamente enquanto não houver uma
+  chave única de atendimento definida; uma linha repetida conta duas vezes.
+- **Janelas de atendimento** usam o histórico completo do cliente, não só os
+  últimos N, até que o efeito da recência seja avaliado.
+- **Contrato matemático** (vale também para a futura versão em C#): quantil
+  linear (tipo 7), arredondamento *half-even* para segundo inteiro antes do
+  ajuste percentual, e ajuste calculado como `valor + valor * p / 100`. As
+  saídas em `tests/dados/golden/` são a referência de equivalência.
 
 Colunas obrigatórias: `Cod_Cliente`, `Chegou_em`, `Finalizada_em`. As opcionais
 e os ~70 apelidos reconhecidos estão em `src/schema.py` e aparecem nas tabelas

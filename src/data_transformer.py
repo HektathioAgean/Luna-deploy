@@ -8,6 +8,9 @@ import pandas as pd
 FORMATOS_DATA_BR = ("%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M", "%d/%m/%Y")
 FORMATOS_DATA_US = ("%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M", "%m/%d/%Y")
 DURACAO_MAXIMA_PLAUSIVEL = pd.Timedelta(days=1)
+# Seriais do Excel entre 1954 e 2119. Fora disso um numero na coluna de data
+# nao e serial, e segue para a conversao normal (e vira datetime_invalido).
+FAIXA_SERIAL_EXCEL = (20_000, 80_000)
 
 
 def _converter_por_formatos(textos: pd.Series, formatos: tuple[str, ...]) -> pd.Series:
@@ -51,7 +54,58 @@ def converter_datahora(serie: pd.Series) -> pd.Series:
     return convertida
 
 
+def _linhas_do_arquivo(mascara: pd.Series, limite: int = 10) -> str:
+    # Indice 0 e a linha 2 do arquivo: a linha 1 e o cabecalho.
+    linhas = [str(int(i) + 2) for i in mascara[mascara].index[:limite]]
+    resto = int(mascara.sum()) - len(linhas)
+    return ", ".join(linhas) + (f" e mais {resto}" if resto > 0 else "")
+
+
+def _rejeitar_formatos_ambiguos(serie: pd.Series) -> None:
+    """
+    Para o processamento quando a coluna traz datas que nao da para ler sem
+    adivinhar, em vez de converter em silencio:
+
+    - numero serial do Excel (46083,375) no lugar da data;
+    - horario com fuso (Z, -03:00) misturado com horario sem fuso: o sem fuso
+      pode ser hora local ou UTC, e a diferenca desloca a janela em horas.
+    """
+    # Coluna ja convertida (data nativa do Excel) nao tem nenhum dos dois casos.
+    if pd.api.types.is_datetime64_any_dtype(serie):
+        return
+
+    texto = serie.astype("string").str.strip()
+
+    numero = pd.to_numeric(texto.str.replace(",", ".", regex=False), errors="coerce")
+    serial = numero.between(*FAIXA_SERIAL_EXCEL).fillna(False).astype(bool)
+    if serial.any():
+        raise ValueError(
+            f"A coluna {serie.name} tem numero serial do Excel em vez de data nas "
+            f"linhas {_linhas_do_arquivo(serial)}. Exporte as datas como texto "
+            "(dd/mm/aaaa hh:mm:ss) ou use o arquivo .xlsx original."
+        )
+
+    com_fuso = texto.str.contains(r"(?:Z|[+-]\d{2}:?\d{2})$", regex=True).fillna(False)
+    if not com_fuso.any():
+        return
+    sem_fuso = (
+        ~com_fuso
+        & texto.str.contains(r"\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}", regex=True).fillna(False)
+    ).astype(bool)
+    if sem_fuso.any():
+        com_fuso = com_fuso.astype(bool)
+        minoria, nome = (sem_fuso, "sem fuso") if sem_fuso.sum() <= com_fuso.sum() else (
+            com_fuso, "com fuso")
+        raise ValueError(
+            f"A coluna {serie.name} mistura horarios com fuso (Z ou +-hh:mm, "
+            f"{int(com_fuso.sum())} linhas) e sem fuso ({int(sem_fuso.sum())} linhas). "
+            f"Linhas {nome}: {_linhas_do_arquivo(minoria)}. "
+            "Padronize o fuso da base antes de processar."
+        )
+
+
 def _converter_iso(serie: pd.Series) -> pd.Series:
+    _rejeitar_formatos_ambiguos(serie)
     convertida = pd.to_datetime(serie, format="ISO8601", errors="coerce", cache=True)
 
     if convertida.dtype == object:
@@ -99,6 +153,20 @@ def converter_datahora_par(
     """
     iso_chegou = _converter_iso(chegou)
     iso_finalizada = _converter_iso(finalizada)
+
+    if (
+        iso_chegou.notna().any()
+        and iso_finalizada.notna().any()
+        and (iso_chegou.dt.tz is None) != (iso_finalizada.dt.tz is None)
+    ):
+        com, sem = (
+            (chegou.name, finalizada.name) if iso_chegou.dt.tz is not None
+            else (finalizada.name, chegou.name)
+        )
+        raise ValueError(
+            f"A coluna {com} tem horarios com fuso e a coluna {sem} nao. "
+            "Padronize o fuso da base antes de processar."
+        )
 
     br = (
         _completar_com_formatos(chegou, iso_chegou, FORMATOS_DATA_BR),
