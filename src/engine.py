@@ -185,10 +185,13 @@ def calcular_medianas_por_cliente(
     if dados.empty:
         return pd.DataFrame(columns=columns)
 
-    # mergesort e estavel: com empates em Chegou_em, quais entregas entram nos
-    # 'eventos_previos' mais recentes deixa de depender da ordem interna do
-    # quicksort e passa a seguir a ordem do arquivo.
-    dados = dados.sort_values(by="Chegou_em", ascending=False, kind="mergesort")
+    # Tempo_Sec desempata Chegou_em: sem ele, com chegadas empatadas, quais
+    # entregas entram nos 'eventos_previos' mais recentes seguia a ordem das
+    # linhas no arquivo. Empate nas duas e linha de mesmo valor, entao a ordem
+    # que sobra nao muda o resultado.
+    dados = dados.sort_values(
+        by=["Chegou_em", "Tempo_Sec"], ascending=False, kind="mergesort"
+    )
 
     por_cliente = dados.groupby("Cod_Cliente", sort=True)
     qtd = por_cliente["Tempo_Sec"].size()

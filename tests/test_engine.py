@@ -95,3 +95,17 @@ def test_duplicata_exata_conta_duas_vezes():
     base = pd.concat([base, base.tail(3)], ignore_index=True)
     r = calcular_medianas_por_cliente(base, **PADRAO).iloc[0]
     assert r["Qtd_Apontamentos"] == 13
+
+
+def test_empate_em_chegou_em_nao_depende_da_ordem_do_arquivo():
+    # Antes: com Chegou_em empatado, quais entregas entravam nos ultimos N
+    # seguia a ordem das linhas no arquivo (600 numa ordem, 1200 na outra).
+    dados = pd.DataFrame({
+        "Cod_Cliente": "C1",
+        "Chegou_em": [pd.Timestamp("2026-01-01 08:00")] * 6,
+        "Tempo_Sec": [600, 600, 600, 600, 1800, 1800],
+    })
+    parametros = {**PADRAO, "eventos_previos": 4}
+    direta = calcular_medianas_por_cliente(dados, **parametros)
+    invertida = calcular_medianas_por_cliente(dados.iloc[::-1], **parametros)
+    pd.testing.assert_frame_equal(direta, invertida)

@@ -111,3 +111,47 @@ def test_codigo_float_do_excel_perde_o_ponto_zero():
     validos, inconsistencias = transform_base(dados)
     assert validos["Cod_Cliente"].tolist() == ["123"]
     assert inconsistencias["Motivo_Inconsistencia"].tolist() == ["cliente_vazio"]
+
+
+# -- Convencao dia/mes decidida para as duas colunas juntas --------------------
+
+def test_uma_linha_mes_dia_nao_vira_a_coluna_inteira():
+    # Antes: a linha 10/13 fazia a Finalizada_em inteira ser lida como mes/dia,
+    # a Chegou_em continuava dia/mes, e as duas linhas boas viravam
+    # tempo_negativo.
+    validos, inconsistencias = transform_base(base(
+        ["03/10/2026 08:00", "04/10/2026 09:00", "05/10/2026 10:00"],
+        ["03/10/2026 08:20", "04/10/2026 09:20", "10/13/2026 10:20"],
+    ))
+    assert validos["Tempo_Sec"].tolist() == [1200, 1200]
+    assert validos["Chegou_em"].dt.month.tolist() == [10, 10]
+    assert inconsistencias["Motivo_Inconsistencia"].tolist() == [
+        "datetime_invalido | tempo_nulo"
+    ]
+
+
+def test_linha_valida_so_na_outra_convencao_e_marcada_como_divergente():
+    validos, inconsistencias = transform_base(base(
+        ["03/10/2026 08:00", "13/10/2026 09:00", "10/14/2026 10:00"],
+        ["03/10/2026 08:20", "13/10/2026 09:20", "10/14/2026 10:20"],
+    ))
+    assert validos["Tempo_Sec"].tolist() == [1200, 1200]
+    assert inconsistencias["Motivo_Inconsistencia"].tolist() == [
+        "data_formato_divergente | datetime_invalido | tempo_nulo"
+    ]
+
+
+def test_base_americana_vence_quando_gera_mais_atendimentos_validos():
+    validos, inconsistencias = transform_base(base(
+        ["03/02/2026 09:00", "03/13/2026 09:00"],
+        ["03/02/2026 09:10", "03/13/2026 09:10"],
+    ))
+    assert validos["Chegou_em"].tolist() == [
+        pd.Timestamp("2026-03-02 09:00"), pd.Timestamp("2026-03-13 09:00")]
+    assert validos["Tempo_Sec"].tolist() == [600, 600]
+    assert inconsistencias.empty
+
+
+def test_empate_entre_convencoes_fica_com_dia_mes():
+    validos, _ = transform_base(base(["03/10/2026 08:00"], ["03/10/2026 08:20"]))
+    assert validos["Chegou_em"].tolist() == [pd.Timestamp("2026-10-03 08:00")]
