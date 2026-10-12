@@ -1,8 +1,10 @@
+import re
 from pathlib import Path
 
 import pandas as pd
 
 from config import DATA_DIR
+from src.schema import get_standard_name
 
 
 def normalize_unit_name(unit_name: str) -> str:
@@ -98,6 +100,68 @@ def read_csv_safely(file_path: Path) -> pd.DataFrame:
     )
 
 
+def _codigo_como_texto(celula) -> str | None:
+    """
+    Texto do codigo do cliente como o operador o ve na celula.
+
+    Numero com formato so de zeros (00000) e um codigo com zeros a esquerda
+    guardado como numero: o formato devolve os zeros. Qualquer outro formato
+    fica com os digitos do numero, sem zeros a esquerda.
+    """
+    valor = celula.value
+    if valor is None:
+        return None
+    if isinstance(valor, bool) or not isinstance(valor, (int, float)):
+        return str(valor)
+    if isinstance(valor, float) and valor.is_integer():
+        valor = int(valor)
+    texto = str(valor)
+    formato = str(celula.number_format or "")
+    if isinstance(valor, int) and valor >= 0 and re.fullmatch(r"0+", formato):
+        texto = texto.zfill(len(formato))
+    return texto
+
+
+def read_excel_safely(file_path: Path) -> pd.DataFrame:
+    """
+    Le a primeira aba com Cod_Cliente como texto.
+
+    pd.read_excel converte o texto "00123" no numero 123, e o cliente se
+    funde com o 123. Aqui a coluna do codigo (reconhecida pelos mesmos aliases
+    da padronizacao) sai como texto; as demais ficam com o tipo da celula.
+    """
+    from openpyxl import load_workbook
+
+    wb = load_workbook(file_path, read_only=True, data_only=True)
+    try:
+        linhas = wb.worksheets[0].iter_rows()
+        cabecalho = [
+            str(c.value) if c.value is not None else f"Unnamed: {i}"
+            for i, c in enumerate(next(linhas, ()))
+        ]
+        largura = len(cabecalho)
+        colunas_codigo = {
+            i for i, nome in enumerate(cabecalho) if get_standard_name(nome) == "Cod_Cliente"
+        }
+
+        dados = []
+        for linha in linhas:
+            valores = [None] * largura
+            for i, celula in enumerate(linha[:largura]):
+                valores[i] = (
+                    _codigo_como_texto(celula) if i in colunas_codigo else celula.value
+                )
+            dados.append(valores)
+    finally:
+        wb.close()
+
+    # Linhas vazias no fim da aba sao formatacao, nao registros.
+    while dados and all(v is None for v in dados[-1]):
+        dados.pop()
+
+    return pd.DataFrame(dados, columns=cabecalho)
+
+
 def carregar_arquivo(caminho: Path) -> pd.DataFrame:
     """
     Carrega uma base a partir de um caminho informado pelo operador.
@@ -121,7 +185,7 @@ def carregar_arquivo(caminho: Path) -> pd.DataFrame:
         return read_csv_safely(caminho)
 
     if sufixo in {".xlsx", ".xlsm"}:
-        return pd.read_excel(caminho)
+        return read_excel_safely(caminho)
 
     raise ValueError(
         f"Formato não suportado: '{sufixo}'. Esperado .csv, .xlsx ou .xlsm."
@@ -161,7 +225,7 @@ def load_unit_file(unit_name: str) -> pd.DataFrame:
             return read_csv_safely(selected_file)
 
         if selected_file.suffix.lower() == ".xlsx":
-            return pd.read_excel(selected_file)
+            return read_excel_safely(selected_file)
 
         raise ValueError(f"Formato não suportado: {selected_file.suffix}")
 
