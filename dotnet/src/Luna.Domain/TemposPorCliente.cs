@@ -113,9 +113,9 @@ public static class TemposPorCliente
     /// <summary>
     /// Ordem das operações, igual à do motor:
     /// <list type="number">
-    /// <item>código com espaços das pontas removidos; código vazio e tempo NaN saem;</item>
+    /// <item>código com espaços das pontas removidos (<c>str.strip()</c> do Python); código vazio e tempo NaN saem;</item>
     /// <item>ordena por Chegou_em e depois Tempo_Sec, decrescente e estável (empate total segue a ordem de entrada);</item>
-    /// <item>por cliente (ordem ordinal do código): os N primeiros são a base;</item>
+    /// <item>por cliente (ordem de code point, como o Python): os N primeiros são a base;</item>
     /// <item>mediana, Q1 e Q3 da base; limpeza por IQR 1,5; Q1 e Q3 da base limpa;</item>
     /// <item>poucos apontamentos (total do cliente &lt; mínimo): tudo vira o tempo padrão;</item>
     /// <item>arredonda para segundo inteiro, depois aplica o ajuste percentual;</item>
@@ -126,17 +126,17 @@ public static class TemposPorCliente
     public static IReadOnlyList<TempoCliente> Calcular(IEnumerable<RegistroTempo> registros, ParametrosTempos parametros)
     {
         var porCliente = registros
-            .Select(r => r with { CodCliente = r.CodCliente.Trim() })
+            .Select(r => r with { CodCliente = TextoPython.Strip(r.CodCliente) })
             .Where(r => r.CodCliente.Length > 0 && !double.IsNaN(r.TempoSec))
             .OrderByDescending(r => r.ChegouEm)
             .ThenByDescending(r => r.TempoSec)
             .GroupBy(r => r.CodCliente, StringComparer.Ordinal)
-            .OrderBy(g => g.Key, StringComparer.Ordinal);
+            .OrderBy(g => g.Key, TextoPython.OrdemCodePoint);
 
         return porCliente
             .Select(g => CalcularCliente(g.Key, g.Select(r => r.TempoSec).ToArray(), parametros))
             .OrderBy(t => t.MedianaTempoSec)
-            .ThenBy(t => t.CodCliente, StringComparer.Ordinal)
+            .ThenBy(t => t.CodCliente, TextoPython.OrdemCodePoint)
             .ToList();
     }
 
