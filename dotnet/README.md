@@ -35,19 +35,27 @@ resto com o sinal do divisor (`%` do Python), `HH:MM` half-even, período e
 horário comercial pelo centro circular, largura e cobertura com o `round` do
 Python. Histórico completo do cliente (diretriz F9).
 
-## Pendências registradas para o PR5
+PR5 — leitura dos dados em texto: `InterpretacaoDatas` (Chegou_em e
+Finalizada_em convertidas juntas), `ParserIso8601` (porta do
+`parse_iso_8601_datetime` do pandas 2.3.3, em C), `ParserDataBarra` (padrões
+do `_strptime` do Python para dd/mm e mm/dd), rejeições com as mensagens
+exatas do motor (serial do Excel, fuso misto, fuso numa coluna só),
+`CodigoCliente` (zeros à esquerda preservados), `EsquemaColunas` (aliases,
+`__dupN`, análise) e `Transformacao` (texto bruto → registro classificado).
+`TextoPython` dá a semântica do Python a `strip`, `lower` e à ordenação.
 
-- **Ordenação de códigos de cliente:** o Python ordena `str` por code point
-  Unicode; o C# usa `StringComparer.Ordinal` (unidades UTF-16). Os dois só
-  divergem quando um código tem caractere fora do BMP (par substituto,
-  U+D800–U+DFFF em UTF-16) e outro tem caractere entre U+E000 e U+FFFF na
-  mesma posição. Afeta a ordem das linhas de `TemposPorCliente` (desempate
-  por código) e de `JanelasDeAtendimento`. Os códigos atuais são ASCII; no
-  PR5, junto com a normalização do código, decidir entre um comparador por
-  code point ou a rejeição de códigos fora do BMP, com teste.
-- **Espaços nas pontas do código:** o Python usa `str.strip()` (espaços
-  Unicode do Python); o C# usa `string.Trim()`. Diferem em poucos caracteres
-  de controle (ex.: U+001C–U+001F). Tratar junto com a normalização.
+## Equivalência Unicode (resolvida no PR5)
+
+- **Ordenação de códigos:** `TextoPython.OrdemCodePoint` compara por code
+  point, como o `str` do Python (o ordinal UTF-16 do .NET divergia com
+  caracteres fora do BMP). Usada em tempos por cliente, janelas e esquema.
+- **Espaços:** `TextoPython.Strip` usa os espaços de `str.isspace()`
+  (inclui U+001C–U+001F, que o `Trim` do .NET mantém).
+- **Minúsculas:** `TextoPython.Minusculas` = `str.lower()` do Python 3.10.
+  Comparado em todo o Unicode com o `ToLowerInvariant`: difere só em U+0130
+  (`İ` → `i` + U+0307 no Python, o que muda alias) e em 40 pares criados no
+  Unicode 14 (U+2C2F, U+A7C0, U+A7D0, U+A7D6, U+A7D8, U+10570–U+10595), que o
+  Python 3.10 (Unicode 13) mantém. Os dois casos são reproduzidos.
 
 ## Build e testes
 
@@ -63,13 +71,44 @@ conferem o SHA-256 de cada arquivo contra o `MANIFEST.json`.
 ## Diferenças de representação conhecidas
 
 - **Precisão de data/hora:** `DateTimeOffset` guarda 100 ns (1 tick); o
-  pandas guarda 1 ns. Dígitos abaixo de 100 ns não chegam iguais ao C# (o
-  tratamento na leitura de texto será definido no PR5). As bases do Luna têm
-  no máximo microssegundos, que os dois representam exatamente.
+  pandas guarda 1 ns. O parser lê até 18 dígitos de fração, como o pandas,
+  mas o C# trunca abaixo de 100 ns (`.123456789` vira `.1234567`). As bases
+  do Luna têm no máximo microssegundos, que os dois representam exatamente.
 - **Faixa de duração:** o pandas guarda a diferença em int64 de
   nanossegundos (±292 anos) e dá `OverflowError` fora disso. O C# calcula em
   `Int128` e não estoura; dentro do int64 o resultado é o do pandas, bit a
   bit, inclusive o arredondamento acima de 2⁵³ ns.
+
+## Divergências conhecidas com o Python
+
+Intencionais (decididas na revisão do PR5):
+
+- **`now` e `today`:** o pandas troca esses textos pela data e hora da
+  máquina (inclusive no `strptime`). O C# os deixa como data inválida
+  (`datetime_invalido | tempo_nulo`) e devolve um aviso com a coluna e as
+  linhas (`ResultadoTransformacao.Avisos`): o relógio da máquina não serve
+  para completar data histórica.
+- **Fuso acima de ±14:00:** o pandas 2.3.3 aceita offset até ±23:59 (ex.:
+  `+14:30`, `+15:00`, `-15:00`, com a hora local mantida); o
+  `DateTimeOffset` só representa até ±14:00. O C# rejeita a base com a
+  coluna e as linhas (`FormatoDeDataException`), sem mudar o horário. Se a
+  coluna também mistura fusos, vale antes a mensagem de fuso misto, como no
+  Python.
+
+Sem efeito em alias ou resultado, ou fora do escopo:
+
+- **Sigma final:** `str.lower()` do Python faz `Σ` final virar `ς`; o C#
+  dá `σ`. Afeta só o texto normalizado do cabeçalho, nunca o alias (todos
+  ASCII).
+- **Versão do Unicode:** NFKD e categorias vêm do .NET (Unicode mais novo
+  que o 13 do Python 3.10). Só caracteres criados depois do Unicode 13
+  podem normalizar diferente num cabeçalho.
+- **Célula numérica do Excel em coluna de data ou de código:** fora do PR5
+  (a importação de arquivos é do PR6). O domínio recebe texto,
+  `DateTime` nativo ou nulo.
+- **Fuso numa coluna e nenhuma data ISO na outra:** o Python quebra com o
+  `TypeError` do pandas na subtração; o C# para no mesmo ponto, com a mesma
+  mensagem (`Cannot subtract tz-naive and tz-aware datetime-like objects`).
 
 ## Regras da migração
 

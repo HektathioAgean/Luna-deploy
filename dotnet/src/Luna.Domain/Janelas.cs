@@ -167,10 +167,10 @@ public static class JanelasDeAtendimento
 
     /// <summary>
     /// Uma janela por cliente sobre todo o histórico recebido (não só os
-    /// últimos N). Código com pontas removidas; código vazio sai; horário nulo
+    /// últimos N). Código com pontas removidas (<c>str.strip()</c> do Python); código vazio sai; horário nulo
     /// é ignorado e cliente sem horário não gera linha. O centro da janela
     /// (início + largura/2, circular) define período e horário comercial.
-    /// Saída ordenada por quantidade decrescente e código (ordinal).
+    /// Saída ordenada por quantidade decrescente e código (code point, como o Python).
     /// </summary>
     /// <param name="cobertura">Fração (0, 1]: cobertura_janela / 100.</param>
     /// <param name="baseJanela">Coluna de origem dos horários: Chegou_em ou Finalizada_em.</param>
@@ -186,10 +186,10 @@ public static class JanelasDeAtendimento
             $"{(long)Math.Round(cobertura * 100, MidpointRounding.ToEven)}%");
 
         return registros
-            .Select(r => r with { CodCliente = r.CodCliente.Trim() })
+            .Select(r => r with { CodCliente = TextoPython.Strip(r.CodCliente) })
             .Where(r => r.CodCliente.Length > 0)
             .GroupBy(r => r.CodCliente, StringComparer.Ordinal)
-            .OrderBy(g => g.Key, StringComparer.Ordinal)
+            .OrderBy(g => g.Key, TextoPython.OrdemCodePoint)
             .Select(g => (Cliente: g.Key, Minutos: g
                 .Where(r => r.Horario is not null)
                 .Select(r => Horario.MinutosDesdeMeiaNoite(r.Horario!.Value))
@@ -197,7 +197,7 @@ public static class JanelasDeAtendimento
             .Where(c => c.Minutos.Count > 0)
             .Select(c => Linha(c.Cliente, c.Minutos, cobertura, coberturaAlvo, baseJanela))
             .OrderByDescending(j => j.QtdApontamentos)
-            .ThenBy(j => j.CodCliente, StringComparer.Ordinal)
+            .ThenBy(j => j.CodCliente, TextoPython.OrdemCodePoint)
             .ToList();
     }
 
