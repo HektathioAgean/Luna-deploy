@@ -118,11 +118,17 @@ public static partial class InterpretacaoDatas
         bool algumSemFuso = false;
         for (int i = 0; i < valores.Count; i++)
         {
+            // pd.to_datetime(format="ISO8601") por tipo de célula: data e
+            // texto são lidos; inteiro é lido como o texto dos seus dígitos
+            // (20260302 vira data); float, bool, hora e duração ficam NaT.
             DataLida? lida = valores[i] switch
             {
                 null => null,
                 DateTime nativa => DeDateTime(nativa),
+                DateOnly dia => DeDateTime(dia.ToDateTime(TimeOnly.MinValue)),
                 string texto => ParserIso8601.TentarLer(texto, out DataLida d) ? d : null,
+                long or System.Numerics.BigInteger => ParserIso8601.TentarLer(TextoPython.Str(valores[i]!), out DataLida d) ? d : null,
+                double or bool or TimeOnly or TimeSpan => null,
                 _ => throw new ArgumentException($"Valor de data nao suportado na coluna {nome}: {valores[i]!.GetType().Name}."),
             };
             if (lida is not { } valor)
@@ -206,15 +212,12 @@ public static partial class InterpretacaoDatas
             $"Linhas {grupo}: {LinhasDoArquivo(minoria)}. Padronize o fuso da base antes de processar.");
     }
 
-    // astype("string").str.strip() do pandas.
+    // astype("string").str.strip() do pandas: o str() de cada valor.
     private static string? TextoParaChecagem(object? valor) => valor switch
     {
         null => null,
         string texto => TextoPython.Strip(texto),
-        DateTime nativa => nativa.ToString(
-            nativa.Ticks % TimeSpan.TicksPerSecond == 0 ? "yyyy-MM-dd HH:mm:ss" : "yyyy-MM-dd HH:mm:ss.ffffff",
-            CultureInfo.InvariantCulture),
-        _ => valor.ToString(),
+        _ => TextoPython.Str(valor),
     };
 
     // pd.to_numeric(texto com ',' trocada por '.') entre 20.000 e 80.000.
@@ -236,6 +239,8 @@ public static partial class InterpretacaoDatas
         var saida = (DateTimeOffset?[])iso.Clone();
         for (int i = 0; i < saida.Length; i++)
         {
+            // Só texto: o str() dos outros tipos de célula (número, bool, hora,
+            // duração, data) nunca tem '/', então nunca casa com dd/mm ou mm/dd.
             if (saida[i] is not null || valores[i] is not string bruto)
                 continue;
             string texto = TextoPython.Strip(bruto);

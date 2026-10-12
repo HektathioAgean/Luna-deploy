@@ -1,3 +1,9 @@
 # Contrato matematico: bytes exatos, conferidos por hash. Sem conversao de
 # fim de linha pelo Git no Windows.
 tests/dados/contrato/** -text
+
+# Planilhas e saídas de referência da leitura de Excel (PR6b): bytes exatos.
+dotnet/tests/Luna.Integration.Tests/dados/xlsx/*.xlsx binary
+dotnet/tests/Luna.Integration.Tests/dados/xlsx/*.xlsm binary
+dotnet/tests/Luna.Integration.Tests/dados/xlsx/*.csv -text
+dotnet/tests/Luna.Integration.Tests/dados/xlsx/*.json -text

@@ -175,3 +175,6 @@ exports/
 !tests/dados/*.csv
 !tests/dados/golden/*.csv
 !tests/dados/contrato/**/*.csv
+!dotnet/tests/Luna.Integration.Tests/dados/xlsx/*.xlsx
+!dotnet/tests/Luna.Integration.Tests/dados/xlsx/*.xlsm
+!dotnet/tests/Luna.Integration.Tests/dados/xlsx/*.csv

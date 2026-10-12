@@ -1,0 +1,5 @@
+Cod_Cliente;Qtd_Apontamentos;Janela_Inicio_Min;Janela_Fim_Min;Janela_Inicio;Janela_Fim;Janela_Largura_Min;Cobertura_Alvo;Cobertura_Real;Cobertura_Real_Valor;Cruza_MeiaNoite;Periodo_Predominante;Comercial;Base_Janela
+00123;10;480.0;500.0;08:00;08:20;20.0;80%;100.0%;1.0;Nao;Diurno;Sim;Chegou_em
+00045;5;510.0;510.0;08:30;08:30;0.0;80%;100.0%;1.0;Nao;Diurno;Sim;Chegou_em
+123;5;490.0;490.0;08:10;08:10;0.0;80%;100.0%;1.0;Nao;Diurno;Sim;Chegou_em
+45;5;520.0;520.0;08:40;08:40;0.0;80%;100.0%;1.0;Nao;Diurno;Sim;Chegou_em
