@@ -76,9 +76,16 @@ vire o número `123`.
 
 As datas de `Chegou_em` e `Finalizada_em` são aceitas em ISO
 (`2026-03-02 09:15:00`) e em `dd/mm/aaaa`, com ou sem segundos, inclusive
-misturadas na mesma coluna. Uma base em `mm/dd/aaaa` só é reconhecida quando
-alguma data tem dia maior que 12; sem isso a leitura `dd/mm` vence. Fusos
-horários diferentes na mesma coluna interrompem o processamento com mensagem.
+misturadas na mesma coluna. A convenção `dd/mm` ou `mm/dd` é decidida uma vez
+para as duas colunas juntas: vence a que gera mais atendimentos com duração
+entre zero e um dia, e `dd/mm` vence o empate. Uma linha que só seria válida
+na convenção perdedora vai para inconsistências como `data_formato_divergente`,
+em vez de virar a coluna inteira. Fusos horários diferentes na mesma coluna
+interrompem o processamento com mensagem.
+
+Na escolha dos últimos N atendimentos, chegadas empatadas em `Chegou_em` são
+desempatadas pelo maior `Tempo_Sec`, então o resultado não depende da ordem das
+linhas no arquivo.
 
 Colunas obrigatórias: `Cod_Cliente`, `Chegou_em`, `Finalizada_em`. As opcionais
 e os ~70 apelidos reconhecidos estão em `src/schema.py` e aparecem nas tabelas

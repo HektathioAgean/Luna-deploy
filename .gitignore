@@ -173,3 +173,4 @@ exports/
 
 # Base sintetica usada pelos testes: nao e dado operacional.
 !tests/dados/*.csv
+!tests/dados/golden/*.csv
