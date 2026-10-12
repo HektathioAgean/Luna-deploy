@@ -21,6 +21,12 @@ inconsistência na ordem do motor e regras operacionais (expurgo `< 300 s`,
 anomalia `> 21.600 s`, limites incluídos). A entrada ainda são datas já
 convertidas; a leitura de datas em texto vem no PR5.
 
+PR3 — `TemposPorCliente` (21 campos na ordem do contrato), `Boxplot` (IQR
+1,5, limites incluídos, IQR zero sem corte), seleção dos últimos N por
+`Chegou_em` e `Tempo_Sec` decrescentes, fallback de poucos apontamentos,
+ajuste depois do arredondamento, gap e percentual (2 casas do numpy) e `Kpis`.
+Códigos de cliente comparados e ordenados de forma ordinal.
+
 ## Build e testes
 
 SDK fixado em `global.json` (10.0.401, aceita feature bands mais novas).
