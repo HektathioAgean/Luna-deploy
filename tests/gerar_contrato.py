@@ -85,17 +85,48 @@ QUANTIS_AMOSTRAS = [
     [0.1, 0.2, 0.3],
     [600.4, 600.6, 601.5, 1200.25, 5.5],
     [900.0] * 7,
+    # Amostras em que o lerp do groupby (a + (b - a) * frac, o do motor) e o
+    # lerp simetrico do numpy (Series.quantile) dao doubles diferentes: sem
+    # elas o contrato aceitaria o algoritmo errado.
+    [1060.139, 1421.3, 388.223, 2261.15],
+    [1804.7, 2749.9, 1494.81, 2560.83, 910.0, 1568.09],
+    [2796.86, 384.5, 729.2, 434.8, 2590.0, 1517.78],
+    [2863.4, 2268.238, 475.015, 1929.3],
 ]
 QUANTIS_P = [0.0, 0.25, 0.5, 0.75, 1.0]
 
+# Amostras em que a mediana do groupby ((a + b) / 2) difere de a + (b - a) / 2.
+MEDIANAS_AMOSTRAS = QUANTIS_AMOSTRAS + [
+    [87.02, 2327.9, 1946.9, 339.62],
+    [1781.88, 1367.0, 436.887, 98.16],
+    [1431.1, 2903.991, 272.494, 2.8],
+]
+
+
+def _por_grupo(amostra: list[float]):
+    return pd.DataFrame({"g": 0, "v": amostra}).groupby("g")["v"]
+
 
 def contrato_quantis() -> str:
+    """
+    Quantis pelo mesmo caminho do motor: groupby().quantile(), que interpola
+    a + (b - a) * frac. Series.quantile (numpy) usa outro lerp e difere em
+    1 ulp em parte dos casos.
+    """
     linhas = []
     for amostra in QUANTIS_AMOSTRAS:
-        serie = pd.Series(amostra, dtype="float64")
+        grupo = _por_grupo(amostra)
         for p in QUANTIS_P:
-            linhas.append(["|".join(repr(v) for v in amostra), p, float(serie.quantile(p))])
+            linhas.append(["|".join(repr(v) for v in amostra), p,
+                           float(grupo.quantile(p).iloc[0])])
     return _csv(["valores", "p", "esperado"], linhas)
+
+
+def contrato_medianas() -> str:
+    """Mediana pelo groupby().median() do motor: (a + b) / 2 com n par."""
+    linhas = [["|".join(repr(v) for v in amostra), float(_por_grupo(amostra).median().iloc[0])]
+              for amostra in MEDIANAS_AMOSTRAS]
+    return _csv(["valores", "esperado"], linhas)
 
 
 ARREDONDAMENTO_X = [
@@ -383,6 +414,7 @@ def gerar() -> dict[str, str]:
     warnings.simplefilter("ignore", FutureWarning)
     arquivos = {
         "elementar/quantis.csv": contrato_quantis(),
+        "elementar/medianas.csv": contrato_medianas(),
         "elementar/arredondamento.csv": contrato_arredondamento(),
         "elementar/ajuste.csv": contrato_ajuste(),
         "elementar/formatacao.csv": contrato_formatacao(),
