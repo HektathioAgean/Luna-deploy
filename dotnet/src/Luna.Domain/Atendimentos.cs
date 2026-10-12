@@ -52,15 +52,31 @@ public static class Classificacao
 
     /// <summary>
     /// <c>(Finalizada_em − Chegou_em).dt.total_seconds()</c> do pandas:
-    /// nanossegundos inteiros divididos por 10⁹, com fração de segundo. Nulo
-    /// quando falta uma das datas.
+    /// nanossegundos inteiros convertidos para double e divididos por 10⁹, com
+    /// fração de segundo. Nulo quando falta uma das datas.
+    /// <para>
+    /// Precisão: <see cref="DateTimeOffset"/> guarda 100 ns (1 tick); o pandas,
+    /// 1 ns. Datas com dígitos abaixo de 100 ns não chegam iguais aqui (a
+    /// leitura de texto, no PR5, define o tratamento); as bases do Luna têm no
+    /// máximo microssegundos, que os dois representam exatamente.
+    /// </para>
+    /// <para>
+    /// Faixa: o pandas guarda nanossegundos em int64 (±292 anos) e dá
+    /// OverflowError fora disso. Aqui a conta usa Int128 e não estoura; dentro
+    /// do int64 o resultado é o do pandas, fora dele não há referência Python.
+    /// </para>
     /// </summary>
     public static double? TempoEmSegundos(DateTimeOffset? chegouEm, DateTimeOffset? finalizadaEm)
     {
         if (chegouEm is null || finalizadaEm is null)
             return null;
-        long nanossegundos = (finalizadaEm.Value - chegouEm.Value).Ticks * 100;
-        return nanossegundos / NanossegundosPorSegundo;
+        Int128 nanossegundos = (Int128)(finalizadaEm.Value - chegouEm.Value).Ticks * 100;
+        // Dentro do int64, a mesma conversão do numpy (int64 -> double), com o
+        // mesmo arredondamento acima de 2^53 ns.
+        double emDouble = nanossegundos >= long.MinValue && nanossegundos <= long.MaxValue
+            ? (long)nanossegundos
+            : (double)nanossegundos;
+        return emDouble / NanossegundosPorSegundo;
     }
 
     /// <summary>

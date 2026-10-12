@@ -94,6 +94,34 @@ public class ClassificacaoTests
             Classificacao.TempoEmSegundos(inicio, inicio.AddTicks(10))!.Value, "1 microssegundo");
     }
 
+    // Valores do pandas 2.3.3: (pd.Series([fim]) - pd.Series([inicio])).dt.total_seconds()
+    [Theory]
+    [InlineData("1970-01-01T00:00:00.000000", "2262-04-11T23:47:16.854775", 9223372036.854774)]
+    [InlineData("2026-01-01T00:00:00.000000", "2026-04-15T00:00:00.000001", 8985600.000001)]
+    [InlineData("1677-09-22T00:12:44.000000", "1970-01-01T00:00:00.000000", 9223285636.0)]
+    public void Intervalo_extremo_igual_ao_pandas(string inicio, string fim, double esperado)
+    {
+        // 292 anos: Ticks * 100 em long estoura; acima de 2^53 ns o double arredonda.
+        var obtido = Classificacao.TempoEmSegundos(Data(inicio), Data(fim))!.Value;
+        Contrato.MesmoDouble(esperado, obtido, $"{inicio} -> {fim}");
+    }
+
+    [Fact]
+    public void Intervalo_alem_da_faixa_do_pandas_nao_estoura()
+    {
+        // O pandas da OverflowError aqui (> int64 ns); o C# devolve o intervalo
+        // com o sinal certo em vez de um numero lixo.
+        double ida = Classificacao.TempoEmSegundos(DateTimeOffset.MinValue, DateTimeOffset.MaxValue)!.Value;
+        double volta = Classificacao.TempoEmSegundos(DateTimeOffset.MaxValue, DateTimeOffset.MinValue)!.Value;
+        double esperado = (DateTimeOffset.MaxValue - DateTimeOffset.MinValue).TotalSeconds;
+        Assert.True(Math.Abs(ida - esperado) <= esperado * 1e-15, $"{ida:R} x {esperado:R}");
+        Assert.Equal(-ida, volta);
+    }
+
+    private static DateTimeOffset Data(string texto)
+        => DateTimeOffset.ParseExact(texto, "yyyy-MM-dd'T'HH:mm:ss.ffffff", CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal);
+
     [Fact]
     public void Datas_com_fusos_diferentes_comparam_o_instante()
     {
