@@ -121,6 +121,22 @@ Decididas na revalidação de 12/10/2026, até haver backtesting com dados reais
   ajuste percentual, e ajuste calculado como `valor + valor * p / 100`. As
   saídas em `tests/dados/golden/` são a referência de equivalência.
 
+### Contrato de referência para a versão em C#
+
+`tests/dados/contrato/` guarda entradas sintéticas e as saídas exatas do motor
+Python: quantis, os três arredondamentos (inteiro e 2 casas do numpy, `round`
+do Python com 1 e 2 casas — algoritmos diferentes, ex.: `2.675` dá `2.68` no
+numpy e `2.67` no Python), ajuste percentual, formatação, tempos por cliente em
+cinco conjuntos de parâmetros, transformação de datas e motivos, erros de
+importação com a mensagem exata e janelas em três coberturas. O
+`MANIFEST.json` registra versões, parâmetros e o SHA-256 de cada arquivo.
+
+- Regerar: `python tests/gerar_contrato.py` (só com justificativa no commit).
+- `tests/test_contrato.py` falha se o motor, os arquivos, os hashes ou as
+  versões de `pandas`/`numpy`/`openpyxl`/`plotly` mudarem.
+- Versões exatas do ambiente de referência: `requirements-lock.txt`
+  (Python 3.10.11).
+
 Colunas obrigatórias: `Cod_Cliente`, `Chegou_em`, `Finalizada_em`. As opcionais
 e os ~70 apelidos reconhecidos estão em `src/schema.py` e aparecem nas tabelas
 da aba Validação.

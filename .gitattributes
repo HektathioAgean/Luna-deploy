@@ -1,0 +1,3 @@
+# Contrato matematico: bytes exatos, conferidos por hash. Sem conversao de
+# fim de linha pelo Git no Windows.
+tests/dados/contrato/** -text

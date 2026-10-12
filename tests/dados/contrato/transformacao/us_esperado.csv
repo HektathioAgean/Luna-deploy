@@ -1,0 +1,4 @@
+linha;Cod_Cliente;Chegou_em;Finalizada_em;Tempo_Sec;Motivo_Inconsistencia;Classe
+2;A;2026-03-02T09:00:00.000000;2026-03-02T09:10:00.000000;600.0;;processado
+3;A;2026-03-13T09:00:00.000000;2026-03-13T09:10:00.000000;600.0;;processado
+4;A;2026-03-14T09:00:00.000000;2026-03-14T09:30:00.000000;1800.0;;processado

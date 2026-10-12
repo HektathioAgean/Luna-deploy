@@ -1,0 +1,16 @@
+Cod_Cliente;Qtd_Apontamentos;Qtd_Base_Calculo;Qtd_Base_Limpa_Boxplot;Qtd_Outliers_Boxplot;Mediana_Tempo_Sec;Mediana_Tempo_Formatada;Tempo_Ideal_Q1_Sec;Tempo_Ideal_Q1_Formatado;Diferenca_Mediana_Q1_Sec;Diferenca_Mediana_Q1_Formatada;Diferenca_Mediana_Q1_Percentual;Q1_Sec;Q3_Sec;IQR_Sec;Limite_Inferior_Boxplot_Sec;Limite_Superior_Boxplot_Sec;Metodo_Aplicado;Metodo_Ideal_Aplicado;Tempo_Q3_Sec;Tempo_Q3_Formatado
+C_MEIO_IMPAR;4;4;4;0;302;00:05:02;301;00:05:01;1;00:00:01;0.33;300.75;302.25;1.5;298.5;304.5;mediana_total;q1_boxplot_iqr;302;00:05:02
+C_MEIO_PAR;4;4;4;0;302;00:05:02;302;00:05:02;0;00:00:00;0.0;302.0;303.0;1.0;300.5;304.5;mediana_total;q1_boxplot_iqr;303;00:05:03
+C_POUCOS_3;3;3;3;0;600;00:10:00;600;00:10:00;0;00:00:00;0.0;600.0;600.0;0.0;600.0;600.0;tempo_padrao_poucos_apontamentos;tempo_padrao_poucos_apontamentos;600;00:10:00
+C_UNICO;1;1;1;0;600;00:10:00;600;00:10:00;0;00:00:00;0.0;600.0;600.0;0.0;600.0;600.0;tempo_padrao_poucos_apontamentos;tempo_padrao_poucos_apontamentos;600;00:10:00
+00123;4;4;4;0;690;00:11:30;645;00:10:45;45;00:00:45;6.52;645.0;735.0;90.0;510.0;870.0;mediana_total;q1_boxplot_iqr;735;00:12:15
+C_ESTAVEL;10;4;4;0;780;00:13:00;765;00:12:45;15;00:00:15;1.92;765.0;795.0;30.0;720.0;840.0;mediana_ultimos_n;q1_boxplot_iqr;795;00:13:15
+C_N4;4;4;3;1;780;00:13:00;660;00:11:00;120;00:02:00;15.38;690.0;1230.0;540.0;-120.0;2040.0;mediana_total;q1_boxplot_iqr;780;00:13:00
+C_OUTLIER_BAIXO;10;4;4;0;780;00:13:00;765;00:12:45;15;00:00:15;1.92;765.0;795.0;30.0;720.0;840.0;mediana_ultimos_n;q1_boxplot_iqr;795;00:13:15
+C_FRACAO;6;4;4;0;803;00:13:23;676;00:11:16;127;00:02:07;15.82;675.75;979.19;303.44;220.59;1434.34;mediana_ultimos_n;q1_boxplot_iqr;979;00:16:19
+C_OUTLIER_ALTO;10;4;3;1;810;00:13:30;750;00:12:30;60;00:01:00;7.41;765.0;1980.0;1215.0;-1057.5;3802.5;mediana_ultimos_n;q1_boxplot_iqr;810;00:13:30
+C_REGIME;15;4;4;0;810;00:13:30;780;00:13:00;30;00:00:30;3.7;780.0;855.0;75.0;667.5;967.5;mediana_ultimos_n;q1_boxplot_iqr;855;00:14:15
+C_IGUAIS;10;4;4;0;900;00:15:00;900;00:15:00;0;00:00:00;0.0;900.0;900.0;0.0;900.0;900.0;mediana_ultimos_n;q1_sem_outlier_iqr_zero;900;00:15:00
+C_EMPATE;6;4;4;0;1200;00:20:00;600;00:10:00;600;00:10:00;50.0;600.0;1800.0;1200.0;-1200.0;3600.0;mediana_ultimos_n;q1_boxplot_iqr;1800;00:30:00
+123;4;4;4;0;1290;00:21:30;1245;00:20:45;45;00:00:45;3.49;1245.0;1335.0;90.0;1110.0;1470.0;mediana_total;q1_boxplot_iqr;1335;00:22:15
+C_DISPERSAO;10;4;4;0;1320;00:22:00;870;00:14:30;450;00:07:30;34.09;870.0;1725.0;855.0;-412.5;3007.5;mediana_ultimos_n;q1_boxplot_iqr;1725;00:28:45
