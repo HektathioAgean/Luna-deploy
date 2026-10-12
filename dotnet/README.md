@@ -16,6 +16,11 @@ PR1 — `Luna.Domain`: quantil tipo 7 e mediana (forma do `groupby` do pandas),
 os três arredondamentos do motor (inteiro half-even, 2 casas do numpy e
 `round` do Python), ajuste percentual e formatação `HH:MM:SS`.
 
+PR2 — duração em segundos (nanossegundos / 10⁹, com fração), motivos de
+inconsistência na ordem do motor e regras operacionais (expurgo `< 300 s`,
+anomalia `> 21.600 s`, limites incluídos). A entrada ainda são datas já
+convertidas; a leitura de datas em texto vem no PR5.
+
 ## Build e testes
 
 SDK fixado em `global.json` (10.0.401, aceita feature bands mais novas).
