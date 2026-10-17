@@ -12,6 +12,23 @@ Estado em 12/10/2026.
 | Roteiros das fases | `LUNA_REVALIDACAO_POS_CORRECOES_PLAN.md`, `LUNA_MIGRACAO_CSHARP_FASE0_PLAN.md` |
 | Estado detalhado da migração | `dotnet/README.md` |
 
+## Retomada de 17/10/2026 (PC principal)
+
+- O PR6 (#22) está mergeado na `main` (`b8b78ed`). Estado do GitHub não
+  conferido desta máquina (sem `gh` nem credencial); refs remotas de 12/10.
+- DocumentFormat.OpenXml 3.5.1 **aprovado** pelo usuário em 17/10.
+- Travamento de 17/10: o fuzz diferencial C#×Python (fora do repo) levou o
+  processo C# a 32 GB (Event Log, Resource-Exhaustion 2004). Causa: laço
+  infinito no `TokenizadorCsv` com fim de linha CR e linha começando por
+  espaço/tab. Corrigido em `pr6c-csv-cr-sem-laco` (`8657a21`, sobre a `main`)
+  e aplicado em `pr6b-revisao` (`a958859`, sobre o PR #23). Sem push.
+- Validado em 17/10: 33 hashes do contrato; `src/`/`tests/` = tag
+  `luna-py-ref-v1.1`; 98 Python; `main`+fix 252 + 35 .NET; `pr6b-revisao`
+  286 + 61 .NET; os 3 testes novos falham sem o fix (OOM com heap de 1 GB).
+- Fuzz/mutação: rodar sempre com `DOTNET_GCHeapHardLimit` (1–2 GB) e
+  `timeout`, no máximo 6 processos Python.
+- Em andamento: fuzz diferencial CSV/pipeline e XLSX no `pr6b-revisao`.
+
 Próximos passos combinados: revisar e mergear o PR #23; depois, otimização
 de memória/alocação da leitura (só com novo benchmark), exportação
 (Excel/ZIP) e, por último, a interface WPF.
