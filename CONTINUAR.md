@@ -36,14 +36,18 @@ Estado em 12/10/2026.
     original repetido (`d0b89f9`, só no `pr6b-revisao`).
   - `gerar_xlsx.py` regenerado fora do repo: 16/16 arquivos byte a byte.
 - Validação final no `pr6b-revisao`: 289 + 62 .NET, 98 Python.
-- **Decisão pendente — índice implícito no CSV** (primeira linha de dados
+- Beta para avaliação em `D:\Documentos\Projetos\Luna-beta` (app atual,
+  motor Python, porta 8791, atalho `Luna beta.lnk`; ver `LEIA-ME-BETA.md`
+  lá). Exportado de `pr6b-revisao` @ `5243248`.
+- Push pendente: falta autenticar o GitHub nesta máquina (`gh auth login`).
+- **Decidido em 17/10: divergência intencional** (`dotnet/README.md`) —
+  índice implícito no CSV (primeira linha de dados
   com campo a mais, p. ex. `;` sobrando no fim): o pandas usa a 1ª coluna
   como índice e o motor Python usa os rótulos do índice para numerar
   linhas (`_linhas_do_arquivo`: `int(i) + 2`) e no `fillna` de
   `_completar_com_formatos`. Resultado: `invalid literal for int()`,
   números de linha errados ou `cannot reindex on an axis with duplicate
-  labels`. O C# descarta o índice e numera por posição. Replicar exige levar
-  os rótulos do índice até o domínio; alternativa: documentar a divergência.
+  labels`. O C# descarta o índice e numera por posição (mantido).
 
 Ramos locais desta retomada (nenhum enviado): `pr6c-csv-cr-sem-laco`
 (sobre a `main`: fix do CR e do ponto do fuso) e `pr6b-revisao` (PR #23 +
