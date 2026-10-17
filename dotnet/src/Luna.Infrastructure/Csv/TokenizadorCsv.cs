@@ -40,6 +40,7 @@ internal static class TokenizadorCsv
         var campos = new List<string>();
         var campo = new System.Text.StringBuilder();
         long linhasDoArquivo = 0;
+        int inicioDaLinha = 0;
         var estado = Estado.InicioRegistro;
 
         void FecharCampo()
@@ -87,10 +88,10 @@ internal static class TokenizadorCsv
                     }
                     else if (!(EspacoOuTab(c) && c != separador))
                     {
-                        // Não era linha em branco: volta ao começo da linha
-                        // (depois do último '\n', como o C) e relê como campo.
-                        int inicio = texto.LastIndexOf('\n', i - 1) + 1;
-                        i = inicio - 1;
+                        // Não era linha em branco: volta ao começo da linha e
+                        // relê como campo. O C volta ao último '\n'; depois de
+                        // um CR isso relê linhas já lidas (sem fim, aqui).
+                        i = inicioDaLinha - 1;
                         estado = Estado.InicioCampo;
                     }
                     break;
@@ -109,6 +110,7 @@ internal static class TokenizadorCsv
                     }
                     if (EspacoOuTab(c) && c != separador)
                     {
+                        inicioDaLinha = i;
                         estado = Estado.LinhaDeEspacos;
                         break;
                     }

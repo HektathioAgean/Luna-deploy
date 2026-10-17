@@ -170,12 +170,15 @@ Sem efeito em alias ou resultado, ou fora do escopo:
   (a importação de arquivos é do PR6). O domínio recebe texto,
   `DateTime` nativo ou nulo.
 - **CSV, casos de borda do tokenizer:** o pandas lê o arquivo em blocos;
-  o C# lê o arquivo inteiro. Só muda num caso patológico: arquivo com fim de
-  linha só CR e uma linha que começa com espaço/tab seguido de dado (o C do
-  pandas volta até o último `
-` do bloco). A mensagem de "Último erro" para
-  falha de decodificação UTF-8 também não é reproduzida (só aparece se as
-  seis tentativas falharem, e a última é cp1252, cuja mensagem é a do Python).
+  o C# lê o arquivo inteiro. Só muda num caso patológico: fim de linha CR
+  e uma linha que começa com espaço/tab seguido de dado. O C do pandas volta
+  até o último `\n` do bloco e relê linhas já lidas: às vezes o resultado é
+  o mesmo do C#, às vezes duplica linhas ou falha com `Buffer overflow caught`.
+  O C# volta só ao começo da linha (o espaço fica no campo); antes voltava ao
+  último `\n` também e entrava em laço sem fim, consumindo toda a memória.
+  A mensagem de "Último erro" para falha de decodificação UTF-8 também não é
+  reproduzida (só aparece se as seis tentativas falharem, e a última é
+  cp1252, cuja mensagem é a do Python).
 - **Excel, diferenças conhecidas com o openpyxl:** (1) o openpyxl lê os
   estilos sempre de `xl/styles.xml` e o C# pelo relacionamento do pacote
   (iguais em arquivos do Excel); (2) a mensagem de arquivo corrompido ou
