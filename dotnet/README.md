@@ -146,6 +146,15 @@ Sem efeito em alias ou resultado, ou fora do escopo:
   `TypeError` do pandas na subtração; o C# para no mesmo ponto, com a mesma
   mensagem (`Cannot subtract tz-naive and tz-aware datetime-like objects`,
   com ponto final quando o fuso está só em `Chegou_em`, como no pandas).
+- **CSV com índice implícito** (primeira linha de dados com campo a mais,
+  como um `;` sobrando no fim): o pandas usa os primeiros campos como índice
+  e o motor Python usa os rótulos desse índice como posição da linha — em
+  `_linhas_do_arquivo` (`int(i) + 2`) e no `fillna` de
+  `_completar_com_formatos`. Lá isso dá `invalid literal for int()`,
+  `cannot reindex on an axis with duplicate labels` ou números de linha
+  errados nas mensagens. O C# descarta o índice (como o motor descarta os
+  campos), numera as linhas pela posição e segue. Divergência intencional,
+  decidida em 17/10/2026.
 
 ## Regras da migração
 
