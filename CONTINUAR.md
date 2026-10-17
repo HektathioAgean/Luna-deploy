@@ -27,7 +27,27 @@ Estado em 12/10/2026.
   286 + 61 .NET; os 3 testes novos falham sem o fix (OOM com heap de 1 GB).
 - Fuzz/mutação: rodar sempre com `DOTNET_GCHeapHardLimit` (1–2 GB) e
   `timeout`, no máximo 6 processos Python.
-- Em andamento: fuzz diferencial CSV/pipeline e XLSX no `pr6b-revisao`.
+- Fuzz diferencial C#×Python (leitura + `executar()`), harness fora do repo:
+  - CSV: 14.000 jobs (seeds 1–4). Achado e corrigido: mensagem do fuso só
+    em `Chegou_em` sem o ponto final do pandas (`7983f78`/`c344319`).
+    Restam só duas classes: CR + linha com espaço (documentada) e índice
+    implícito (pendente, abaixo).
+  - XLSX: 5.600 jobs, 100 % iguais depois do fix de cabeçalho com nome
+    original repetido (`d0b89f9`, só no `pr6b-revisao`).
+  - `gerar_xlsx.py` regenerado fora do repo: 16/16 arquivos byte a byte.
+- Validação final no `pr6b-revisao`: 289 + 62 .NET, 98 Python.
+- **Decisão pendente — índice implícito no CSV** (primeira linha de dados
+  com campo a mais, p. ex. `;` sobrando no fim): o pandas usa a 1ª coluna
+  como índice e o motor Python usa os rótulos do índice para numerar
+  linhas (`_linhas_do_arquivo`: `int(i) + 2`) e no `fillna` de
+  `_completar_com_formatos`. Resultado: `invalid literal for int()`,
+  números de linha errados ou `cannot reindex on an axis with duplicate
+  labels`. O C# descarta o índice e numera por posição. Replicar exige levar
+  os rótulos do índice até o domínio; alternativa: documentar a divergência.
+
+Ramos locais desta retomada (nenhum enviado): `pr6c-csv-cr-sem-laco`
+(sobre a `main`: fix do CR e do ponto do fuso) e `pr6b-revisao` (PR #23 +
+os três fixes + este registro).
 
 Próximos passos combinados: revisar e mergear o PR #23; depois, otimização
 de memória/alocação da leitura (só com novo benchmark), exportação
