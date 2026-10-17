@@ -144,7 +144,8 @@ Sem efeito em alias ou resultado, ou fora do escopo:
 - **Excel (`.xlsx`/`.xlsm`):** recusado até o PR6b.
 - **Fuso numa coluna e nenhuma data ISO na outra:** o Python quebra com o
   `TypeError` do pandas na subtração; o C# para no mesmo ponto, com a mesma
-  mensagem (`Cannot subtract tz-naive and tz-aware datetime-like objects`).
+  mensagem (`Cannot subtract tz-naive and tz-aware datetime-like objects`,
+  com ponto final quando o fuso está só em `Chegou_em`, como no pandas).
 
 ## Regras da migração
 
