@@ -74,6 +74,23 @@ public class EsquemaTests
         Assert.Equal(["Cod_Cliente"], relatorio.ColunasDuplicadas);
     }
 
+    // Nome original repetido (o Excel não renomeia como o read_csv): o
+    // rename_map do Python é por nome original, então o último sufixo vale
+    // para todas as cópias. Esperados de standardize_columns/analyze_schema.
+    [Fact]
+    public void Nome_original_repetido_recebe_o_ultimo_sufixo_em_todas_as_copias()
+    {
+        Assert.Equal(["Motorista__dup1", "Cod_Cliente", "Chegou_em", "Motorista__dup1", "Finalizada_em"],
+            EsquemaColunas.Padronizar(["Motorista", "cod_cliente", "arrived_at", "Motorista", "finalizada em"]));
+
+        var padronizadas = EsquemaColunas.Padronizar(["cod_cliente", "Cod_Cliente", "cod_cliente", "Chegou_em", "Finalizada_em"]);
+        Assert.Equal(["Cod_Cliente__dup2", "Cod_Cliente__dup1", "Cod_Cliente__dup2", "Chegou_em", "Finalizada_em"], padronizadas);
+        var relatorio = EsquemaColunas.Analisar(padronizadas);
+        Assert.True(relatorio.Valido);
+        Assert.Equal(["Cod_Cliente__dup2", "Cod_Cliente__dup1", "Cod_Cliente__dup2"], relatorio.ColunasDesconhecidas);
+        Assert.Equal(["Cod_Cliente"], relatorio.ColunasDuplicadas);
+    }
+
     [Fact]
     public void Esquema_sem_obrigatorias_e_invalido()
     {

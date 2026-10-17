@@ -30,6 +30,7 @@ public sealed class ProcessarBase(ILeitorDeBase leitor)
     /// <exception cref="FileNotFoundException">Arquivo inexistente.</exception>
     /// <exception cref="BaseInvalidaException">Base vazia ou ilegível.</exception>
     /// <exception cref="FormatoDeDataException">Datas ambíguas.</exception>
+    /// <exception cref="KeyNotFoundException">Coluna obrigatória com o nome original repetido.</exception>
     public ResultadoProcessamento Executar(ParametrosProcessamento parametros)
     {
         TabelaBruta bruta = leitor.Carregar(parametros.Caminho);
@@ -90,7 +91,9 @@ public sealed class ProcessarBase(ILeitorDeBase leitor)
             if (colunas[i] == nome)
                 return i;
         }
-        throw new InvalidOperationException($"Coluna {nome} ausente depois da validacao do esquema.");
+        // Obrigatória com o nome original repetido: todas as cópias viram
+        // __dupN, o esquema passa e o Python quebra com KeyError('nome').
+        throw new KeyNotFoundException($"'{nome}'");
     }
 
     // A leitura entrega o código como texto (CSV todo em texto; XLSX pela
