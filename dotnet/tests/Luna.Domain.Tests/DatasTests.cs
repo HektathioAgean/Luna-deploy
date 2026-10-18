@@ -250,6 +250,18 @@ public class DatasTests
         Assert.Equal("Cannot subtract tz-naive and tz-aware datetime-like objects", erro.Message);
     }
 
+    [Theory]
+    [InlineData("03/10/2026 08:00")]
+    [InlineData("lixo")]
+    public void Fuso_so_na_chegada_falha_com_a_mensagem_do_pandas_para_essa_ordem(string finalizada)
+    {
+        // Finalizada_em - Chegou_em: sem fuso menos com fuso, o pandas termina
+        // a mensagem com ponto (com fuso menos sem fuso, não).
+        var erro = Assert.Throws<FormatoDeDataException>(
+            () => InterpretacaoDatas.ConverterPar(["2026-10-03T11:20:00Z"], [finalizada]));
+        Assert.Equal("Cannot subtract tz-naive and tz-aware datetime-like objects.", erro.Message);
+    }
+
     [Fact]
     public void Com_e_sem_fuso_que_o_regex_nao_ve_sao_rejeitados_pelo_iso()
     {

@@ -130,6 +130,22 @@ public sealed class LeitorCsvTests : IDisposable
         Assert.Equal(new string?[][] { ["  A", "x", "y"], ["\tB", "x", "y"] }, Linhas(tabela));
     }
 
+    // Fim de linha só CR e linha começando por espaço/tab com dado: antes o
+    // tokenizer voltava ao último '\n' (o começo do arquivo) e relia tudo sem
+    // parar, consumindo memória até travar a máquina. O pandas dá o mesmo
+    // resultado nos dois primeiros casos (read_csv_safely, pandas 2.3.3).
+    [Theory]
+    [InlineData("Cod_Cliente;Chegou_em;Finalizada_em\rA;x;y\r  B;x;y\rC;x;y\r")]
+    [InlineData("Cod_Cliente;Chegou_em;Finalizada_em\rA;x;y\r  B;x;y\rC;x;y")]
+    [InlineData("Cod_Cliente;Chegou_em;Finalizada_em\nA;x;y\r  B;x;y\rC;x;y\n")]
+    public async Task Cr_e_linha_comecando_por_espaco_termina_e_mantem_o_espaco(string texto)
+    {
+        string caminho = Arquivo("cr_espaco.csv", texto);
+        // Sem o limite de tempo, uma regressão trava o teste (e a máquina).
+        var tabela = await Task.Run(() => LeitorCsv.Ler(caminho)).WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(new string?[][] { ["A", "x", "y"], ["  B", "x", "y"], ["C", "x", "y"] }, Linhas(tabela));
+    }
+
     [Fact]
     public void So_cabecalho_da_tabela_sem_linhas()
     {

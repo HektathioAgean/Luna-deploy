@@ -80,9 +80,11 @@ public static partial class InterpretacaoDatas
         }
         // Uma coluna com fuso e a outra sem nenhuma data ISO lida: o motor
         // Python passa da checagem acima e quebra na subtração com o TypeError
-        // do pandas. Mesma falha, mesma mensagem.
+        // do pandas. Mesma falha, mesma mensagem: em Finalizada_em - Chegou_em,
+        // sem fuso menos com fuso termina com ponto.
         if (isoChegou.ComFuso != isoFinalizada.ComFuso)
-            throw new FormatoDeDataException("Cannot subtract tz-naive and tz-aware datetime-like objects");
+            throw new FormatoDeDataException("Cannot subtract tz-naive and tz-aware datetime-like objects" +
+                (isoChegou.ComFuso ? "." : ""));
 
         var br = (Completar(chegou, isoChegou.Valores, ParserDataBarra.FormatosBr),
                   Completar(finalizada, isoFinalizada.Valores, ParserDataBarra.FormatosBr));

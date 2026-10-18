@@ -132,16 +132,29 @@ Sem efeito em alias ou resultado, ou fora do escopo:
   (a importação de arquivos é do PR6). O domínio recebe texto,
   `DateTime` nativo ou nulo.
 - **CSV, casos de borda do tokenizer:** o pandas lê o arquivo em blocos;
-  o C# lê o arquivo inteiro. Só muda num caso patológico: arquivo com fim de
-  linha só CR e uma linha que começa com espaço/tab seguido de dado (o C do
-  pandas volta até o último `
-` do bloco). A mensagem de "Último erro" para
-  falha de decodificação UTF-8 também não é reproduzida (só aparece se as
-  seis tentativas falharem, e a última é cp1252, cuja mensagem é a do Python).
+  o C# lê o arquivo inteiro. Só muda num caso patológico: fim de linha CR
+  e uma linha que começa com espaço/tab seguido de dado. O C do pandas volta
+  até o último `\n` do bloco e relê linhas já lidas: às vezes o resultado é
+  o mesmo do C#, às vezes duplica linhas ou falha com `Buffer overflow caught`.
+  O C# volta só ao começo da linha (o espaço fica no campo); antes voltava ao
+  último `\n` também e entrava em laço sem fim, consumindo toda a memória.
+  A mensagem de "Último erro" para falha de decodificação UTF-8 também não é
+  reproduzida (só aparece se as seis tentativas falharem, e a última é
+  cp1252, cuja mensagem é a do Python).
 - **Excel (`.xlsx`/`.xlsm`):** recusado até o PR6b.
 - **Fuso numa coluna e nenhuma data ISO na outra:** o Python quebra com o
   `TypeError` do pandas na subtração; o C# para no mesmo ponto, com a mesma
-  mensagem (`Cannot subtract tz-naive and tz-aware datetime-like objects`).
+  mensagem (`Cannot subtract tz-naive and tz-aware datetime-like objects`,
+  com ponto final quando o fuso está só em `Chegou_em`, como no pandas).
+- **CSV com índice implícito** (primeira linha de dados com campo a mais,
+  como um `;` sobrando no fim): o pandas usa os primeiros campos como índice
+  e o motor Python usa os rótulos desse índice como posição da linha — em
+  `_linhas_do_arquivo` (`int(i) + 2`) e no `fillna` de
+  `_completar_com_formatos`. Lá isso dá `invalid literal for int()`,
+  `cannot reindex on an axis with duplicate labels` ou números de linha
+  errados nas mensagens. O C# descarta o índice (como o motor descarta os
+  campos), numera as linhas pela posição e segue. Divergência intencional,
+  decidida em 17/10/2026.
 
 ## Regras da migração
 
