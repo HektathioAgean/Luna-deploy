@@ -39,7 +39,9 @@ Estado em 12/10/2026.
 - Beta para avaliação em `D:\Documentos\Projetos\Luna-beta` (app atual,
   motor Python, porta 8791, atalho `Luna beta.lnk`; ver `LEIA-ME-BETA.md`
   lá). Exportado de `pr6b-revisao` @ `5243248`.
-- Push pendente: falta autenticar o GitHub nesta máquina (`gh auth login`).
+- Enviado em 18/10 (sem merge): PR #24 `pr6c-csv-cr-sem-laco` → `main`
+  (fix do CR e do ponto do fuso); PR #23 atualizado com `pr6b-revisao`
+  (fast-forward de `8a2854d`). `gh` logado nesta máquina.
 - **Decidido em 17/10: divergência intencional** (`dotnet/README.md`) —
   índice implícito no CSV (primeira linha de dados
   com campo a mais, p. ex. `;` sobrando no fim): o pandas usa a 1ª coluna
@@ -49,9 +51,11 @@ Estado em 12/10/2026.
   números de linha errados ou `cannot reindex on an axis with duplicate
   labels`. O C# descarta o índice e numera por posição (mantido).
 
-Ramos locais desta retomada (nenhum enviado): `pr6c-csv-cr-sem-laco`
-(sobre a `main`: fix do CR e do ponto do fuso) e `pr6b-revisao` (PR #23 +
-os três fixes + este registro).
+Ramos desta retomada: `pr6c-csv-cr-sem-laco` (PR #24, sobre a `main`) e
+`pr6b-revisao` (enviado como `pr6b-leitura-xlsx`, PR #23: XLSX + os três
+fixes + este registro). Ordem sugerida: revisar e mergear o #24, depois o
+#23 (os commits do #24 já estão nele via cherry-pick); em seguida,
+otimização de memória da leitura com benchmark novo.
 
 Próximos passos combinados: revisar e mergear o PR #23; depois, otimização
 de memória/alocação da leitura (só com novo benchmark), exportação
