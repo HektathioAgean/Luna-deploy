@@ -1,0 +1,5 @@
+Cod_Cliente;Qtd_Apontamentos;Qtd_Base_Calculo;Qtd_Base_Limpa_Boxplot;Qtd_Outliers_Boxplot;Mediana_Tempo_Sec;Mediana_Tempo_Formatada;Tempo_Ideal_Q1_Sec;Tempo_Ideal_Q1_Formatado;Diferenca_Mediana_Q1_Sec;Diferenca_Mediana_Q1_Formatada;Diferenca_Mediana_Q1_Percentual;Q1_Sec;Q3_Sec;IQR_Sec;Limite_Inferior_Boxplot_Sec;Limite_Superior_Boxplot_Sec;Metodo_Aplicado;Metodo_Ideal_Aplicado;Tempo_Q3_Sec;Tempo_Q3_Formatado
+00123;10;10;10;0;780;00:13:00;720;00:12:00;60;00:01:00;7.69;720.0;840.0;120.0;540.0;1020.0;mediana_total;q1_boxplot_iqr;840;00:14:00
+123;5;5;5;0;780;00:13:00;720;00:12:00;60;00:01:00;7.69;720.0;840.0;120.0;540.0;1020.0;mediana_total;q1_boxplot_iqr;840;00:14:00
+00045;5;5;5;0;900;00:15:00;840;00:14:00;60;00:01:00;6.67;840.0;960.0;120.0;660.0;1140.0;mediana_total;q1_boxplot_iqr;960;00:16:00
+45;5;5;5;0;960;00:16:00;900;00:15:00;60;00:01:00;6.25;900.0;1020.0;120.0;720.0;1200.0;mediana_total;q1_boxplot_iqr;1020;00:17:00

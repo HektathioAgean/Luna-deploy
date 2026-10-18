@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -21,6 +21,10 @@
     <ProjectReference Include="..\..\src\Luna.Infrastructure\Luna.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Luna.Application\Luna.Application.csproj" />
     <ProjectReference Include="..\..\src\Luna.Domain\Luna.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="dados\**\*.xlsx;dados\**\*.xlsm;dados\**\*.json;dados\**\*.csv" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

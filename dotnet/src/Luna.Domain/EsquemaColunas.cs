@@ -115,26 +115,29 @@ public static partial class EsquemaColunas
     /// <summary>
     /// <c>standardize_columns</c>: nome padrão de cada coluna; a partir da
     /// segunda ocorrência do mesmo nome, sufixo <c>__dup1</c>, <c>__dup2</c>...
+    /// O <c>rename_map</c> é por nome original: com o nome original repetido
+    /// (o Excel não renomeia como o read_csv), o último sufixo vale para todas
+    /// as cópias.
     /// </summary>
     public static IReadOnlyList<string> Padronizar(IReadOnlyList<string> colunas)
     {
         var usados = new Dictionary<string, int>(StringComparer.Ordinal);
-        var saida = new List<string>(colunas.Count);
+        var renomear = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (string coluna in colunas)
         {
             string padrao = NomePadrao(coluna);
             if (usados.TryGetValue(padrao, out int vezes))
             {
                 usados[padrao] = vezes + 1;
-                saida.Add($"{padrao}__dup{vezes + 1}");
+                renomear[coluna] = $"{padrao}__dup{vezes + 1}";
             }
             else
             {
                 usados[padrao] = 0;
-                saida.Add(padrao);
+                renomear[coluna] = padrao;
             }
         }
-        return saida;
+        return colunas.Select(c => renomear[c]).ToList();
     }
 
     /// <summary>

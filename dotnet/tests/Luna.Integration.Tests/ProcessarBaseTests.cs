@@ -173,4 +173,22 @@ public class ProcessarBaseTests
         Assert.Equal("tempo_min_expurgo precisa ser menor que tempo_max_anomalia.",
             Erro(() => new ParametrosProcessamento("x.csv", tempoMinExpurgo: 500, tempoMaxAnomalia: 500)));
     }
+
+    private sealed class LeitorFixo(TabelaBruta tabela) : ILeitorDeBase
+    {
+        public TabelaBruta Carregar(string caminho) => tabela;
+    }
+
+    // Coluna obrigatória com o nome original repetido (Excel): todas as cópias
+    // viram Cod_Cliente__dup1, o esquema passa e o Python quebra com
+    // KeyError('Cod_Cliente') em transform_base.
+    [Fact]
+    public void Obrigatoria_com_nome_original_repetido_falha_como_o_python()
+    {
+        var tabela = new TabelaBruta(["Cod_Cliente", "Chegou_em", "Finalizada_em", "Cod_Cliente"],
+            [["A", "2026-01-01 08:00:00", "2026-01-01 08:10:00", "B"]]);
+        var erro = Assert.Throws<KeyNotFoundException>(
+            () => new ProcessarBase(new LeitorFixo(tabela)).Executar(new ParametrosProcessamento("x.xlsx")));
+        Assert.Equal("'Cod_Cliente'", erro.Message);
+    }
 }

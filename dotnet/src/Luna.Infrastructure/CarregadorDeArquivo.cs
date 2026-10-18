@@ -1,5 +1,6 @@
 using Luna.Application;
 using Luna.Infrastructure.Csv;
+using Luna.Infrastructure.Xlsx;
 
 namespace Luna.Infrastructure;
 
@@ -23,9 +24,7 @@ public sealed class CarregadorDeArquivo : ILeitorDeBase
         return sufixo switch
         {
             ".csv" => LeitorCsv.Ler(caminho),
-            // Leitura de Excel: PR6b (depende da aprovação da biblioteca de XLSX).
-            ".xlsx" or ".xlsm" => throw new BaseInvalidaException(
-                $"Leitura de '{sufixo}' ainda não disponível na versão C#. Salve a base como .csv."),
+            ".xlsx" or ".xlsm" => LeitorXlsx.Ler(caminho),
             _ => throw new BaseInvalidaException($"Formato não suportado: '{sufixo}'. Esperado .csv, .xlsx ou .xlsm."),
         };
     }
