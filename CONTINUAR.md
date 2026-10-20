@@ -7,7 +7,7 @@ Estado em 20/10/2026.
 | Item | Situação |
 |---|---|
 | `main` | até o PR11: painel do cliente em Application (`acc331d`) |
-| PR12 — `pr12-desktop-esqueleto` | `Luna.Desktop` (WPF): Base, Validação, Processamento, **aberto para revisão** |
+| PR #32 — `pr12-desktop-esqueleto` | `Luna.Desktop` (WPF): Base, Validação, Processamento, **aberto para revisão** |
 | PR #31 — `pr11-painel-cliente` | painel do cliente em Application (PR11), **mergeado** em 20/10 (`acc331d`) |
 | PR #30 — `pr10-progresso-cancelamento` | progresso por estágio e cancelamento (PR10), **mergeado** em 20/10 (`ca2256e`) |
 | PR #28 — `pr9-exportacao` | gravação da exportação em Excel e ZIP/CSV (PR9), **mergeado** em 20/10 (`def4393`) |
@@ -25,7 +25,7 @@ Exportação; ScottPlot 5 depois de protótipo; CommunityToolkit.Mvvm;
 self-contained win-x64 portátil; Fluent). Ordem do §5: PR10 (progresso e
 cancelamento, sem UI), PR11 (painel do cliente em Application), depois a UI.
 
-## Luna.Desktop — esqueleto WPF (PR12, branch `pr12-desktop-esqueleto`, 20/10/2026)
+## Luna.Desktop — esqueleto WPF (PR12, PR #32, 20/10/2026)
 
 - Projetos novos: `Luna.Apresentacao` (ViewModels MVVM sem WPF,
   CommunityToolkit.Mvvm 8.4.2), `Luna.Desktop` (WPF .NET 10, `ThemeMode="System"`,
