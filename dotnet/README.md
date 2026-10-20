@@ -9,7 +9,7 @@ substituição ser aprovada.
 |---|---|---|
 | `src/Luna.Domain` | regras e funções matemáticas puras | nenhuma (só BCL) |
 | `src/Luna.Application` | caso de uso `ProcessarBase`, `ParametrosProcessamento`, porta `ILeitorDeBase`, `SaidasExportacao` (as 8 tabelas da exportação) | Domain |
-| `src/Luna.Infrastructure` | `CarregadorDeArquivo`, leitura de CSV e de XLSX/XLSM | Application, DocumentFormat.OpenXml 3.5.1 (MIT) |
+| `src/Luna.Infrastructure` | `CarregadorDeArquivo`, leitura de CSV e de XLSX/XLSM, `Exportador` (gravação em Excel e ZIP/CSV) | Application, DocumentFormat.OpenXml 3.5.1 (MIT) |
 | `tests/Luna.Domain.Tests` | testes de unidade e paridade com o contrato | xUnit |
 | `tests/Luna.Integration.Tests` | leitura de arquivo e fluxo ponta a ponta contra o Python | xUnit |
 
@@ -61,8 +61,7 @@ Python.
 decodificado em blocos de 64 KB durante a tokenização (PR7: a `string` do
 arquivo inteiro não existe mais); cada linha vira um `string[]` usado direto
 na `TabelaBruta`. A `TabelaBruta` continua com todas as linhas antes do
-processamento. Benchmark abaixo; **benchmark com base real continua
-obrigatório antes da distribuição**.
+processamento. Benchmarks abaixo, inclusive com uma base real (PR9).
 
 PR6b — leitura de `.xlsx`/`.xlsm` (`LeitorXlsx`) com DocumentFormat.OpenXml
 3.5.1 (MIT): pacote, `workbook.xml`, `styles.xml` e `<dimension>` pelo SDK;
@@ -134,6 +133,86 @@ linhas das 8 tabelas (13,9 milhões de células), sem gravar.
   `object?[]` e os valores por linha); o pico sobe 1–8 MB: nenhuma tabela é
   copiada.
 
+PR9 — gravação da exportação (`Exportador.Exportar`, `GravadorXlsx`,
+`GravadorZipCsv`), como o `exportar()` do Python: formato `xlsx` ou `zip`,
+destino pasta ou arquivo (`{base}_luna_resultado.{ext}`), mesmas mensagens
+de formato inválido e pasta inexistente.
+
+- **ZIP:** um CSV por saída, na ordem de `SAIDAS`, como o `to_csv` do pandas
+  2.3.3 no Windows: BOM em cada arquivo, `;`, CRLF, aspas só quando o campo
+  tem `;`, aspas ou quebra de linha (`""` num registro de um campo vazio),
+  nulo vazio; float com o repr mais curto; datetime64 com a resolução da
+  coluna (só datas à meia-noite saem `AAAA-MM-DD`); datetime com fuso como
+  `str(Timestamp)` com o offset; timedelta64 como `N days HH:MM:SS`;
+  `pd.DataFrame()` vira só a linha vazia.
+- **Excel:** como o openpyxl 3.1.5 em write_only: uma aba por saída; tabela
+  sem linhas ou sem colunas deixa a aba vazia, sem cabeçalho; número com
+  `%.16g`; data como serial do Excel (época 1899-12-30, 29/02/1900 fictício)
+  com o formato do tipo (`yyyy-mm-dd h:mm:ss`, `yyyy-mm-dd`, `h:mm:ss`,
+  `[hh]:mm:ss`); texto inline cortado em 32.767 caracteres; `#N/A` e afins
+  como erro. O XML de cada aba é escrito em sequência direto no ZIP: nada da
+  planilha fica em memória.
+- **Recusas, antes de criar qualquer arquivo:** Excel com data com fuso
+  (o offset não é removido em silêncio; o ZIP continua disponível) e aba
+  acima de 1.048.575 linhas de dados ou 16.384 colunas. Caractere de
+  controle que o Excel não aceita também é recusado, com aba, linha e coluna.
+- **Publicação segura:** grava num temporário `*.parcial` de nome único na
+  pasta de destino, força o disco e só então troca o alvo (`File.Move` com
+  substituição, como o `os.replace`). Em erro, cancelamento
+  (`CancellationToken`) ou alvo aberto em outro programa, o temporário é
+  apagado e o arquivo anterior fica como estava.
+
+### Base real (20/10/2026)
+
+Uma base operacional em XLSX (22,7 MB; 133.133 linhas × 45 colunas; 6.909
+clientes), lida no lugar, fora do repositório. Só agregados ficam
+registrados aqui: nenhum código, nome ou valor.
+
+- **Igual ao Python:** as 8 tabelas da exportação, comparadas registro a
+  registro em fluxo (350.946 registros: colunas, dtypes, origem de cada
+  linha, valores e ordem), mais os KPIs; e o conteúdo exportado (os 8 CSVs
+  idênticos byte a byte; no XLSX, cada célula das 8 abas com o mesmo tipo,
+  valor e formato). Linhas: 133.133 lidas, 70.862 válidas, 5.461
+  inconsistentes, 56.768 expurgadas, 42 anomalias.
+- **Benchmark** (mesma máquina; C# mediana de 3, Python 1 rodada; pico do
+  processo inteiro):
+
+| Operação | C# | Python |
+|---|---|---|
+| Ler | 5,5 s · pico 276 MB · 894 MB alocados | — |
+| Processar | 6,0 s · pico 384 MB · 1,05 GB alocados | 49,6 s |
+| Exportar ZIP | 5,6 s · pico 391 MB · +1,8 GB alocados | 67,3 s · pico 759 MB |
+| Exportar XLSX | 15,6 s · pico 390 MB · +3,9 GB alocados | 283,9 s · pico 759 MB |
+
+  Arquivos: ZIP 41,2 MB (Python 41,4 MB) e XLSX 102,5 MB (Python 102,3 MB).
+  O tempo de processar do Python é o total menos a exportação.
+
+### Benchmark da exportação (PR9, 20/10/2026)
+
+Mesma máquina e base de 300.000 linhas do PR7/PR8, processo próprio por
+medição. C#: mediana de 3; Python: 1 rodada. "Exportar" = só a gravação (no
+Python inclui a releitura da base bruta, que faz parte do `exportar()`); pico =
+do processo inteiro, processamento incluído.
+
+| Exportar | C# | Python |
+|---|---|---|
+| ZIP, base CSV | 3,2 s · pico 352 MB · +0,9 GB alocados | 9,9 s · pico 409 MB |
+| XLSX, base CSV | 11,0 s · pico 352 MB · +2,6 GB alocados | 174,5 s · pico 408 MB |
+| ZIP, base XLSX | 3,5 s · pico 308 MB · +1,1 GB alocados | 30,6 s · pico 473 MB |
+| XLSX, base XLSX | 11,3 s · pico 309 MB · +3,1 GB alocados | 206,0 s · pico 473 MB |
+
+- O pico do C# fica 1–3 MB acima do de só processar (349 e 307 MB): as abas e
+  os CSVs são escritos em fluxo. A alocação é de curta duração (texto de cada
+  célula).
+- Arquivos: ZIP 33,5 MB (Python 32,7 MB, outro nível de compressão), XLSX
+  83,8 MB (Python 85,2 MB). O conteúdo é o comparado, não o contêiner.
+- **Conteúdo igual ao Python nessa base** (CSV e XLSX de entrada): os 8 CSVs
+  idênticos byte a byte e, no XLSX, cada célula das 8 abas com o mesmo tipo,
+  valor e formato lidos pelo openpyxl. Linhas por aba: 300.000, 239.750,
+  239.750, 0 (só cabeçalho no CSV; aba vazia no Excel), 30.117, 30.133, 9.000
+  e 9.000; mesmos campos vazios e 2,16 M (base CSV) / 2,76 M (base XLSX)
+  células de data nas duas saídas.
+
 ### Benchmark da leitura otimizada (PR7, 19/10/2026)
 
 Ryzen 7 5700X, 32 GB. Base sintética nova de 300.000 linhas × 6 colunas e
@@ -184,8 +263,8 @@ inclui o interpretador e o pandas). Tempo: média de 2 rodadas (C#) e 3
   leitura): `LoadCurrentElement` por linha, listas de atributos e regex de
   coordenada por célula. Otimizar só com novo benchmark. (Feito no PR7,
   acima.)
-- Medido com uma base sintética; benchmark com base real continua
-  obrigatório antes da distribuição.
+- Medido com uma base sintética; a base real foi medida no PR9 (ver
+  "Base real", acima).
 
 ## Equivalência Unicode (resolvida no PR5)
 
@@ -286,6 +365,27 @@ Sem efeito em alias ou resultado, ou fora do escopo:
   exportar; o C# usa a leitura do próprio processamento (a mesma tabela, sem
   releitura nem segunda cópia). Só difere se o arquivo mudar entre processar e
   exportar: aí o C# exporta o que foi processado.
+- **Excel da exportação** (PR9): (1) texto que começa com `=` sai como texto
+  (célula `inlineStr`, sem `<f>`); o openpyxl grava como fórmula, e o Excel
+  executaria conteúdo vindo da base (`=HYPERLINK(...)`, por exemplo). Reaberto,
+  o texto é o mesmo; (2) `\r` no texto sai como `&#xD;` e volta igual ao
+  reabrir (`a\r\nb` continua `a\r\nb`). O Python no Windows grava `\r\r\n`
+  (o arquivo temporário do openpyxl traduz `\n`) e, reaberto, `a\r\nb` vira
+  `a\n\nb`; `\r` sozinho vira `\n`. Gravado cru, como no Python em Linux, o
+  `\r` se perderia na leitura do XML; (3) base com data com fuso, aba grande demais e caractere de controle
+  são recusados com mensagem clara antes de gravar ou no ponto do erro, sempre
+  sem publicar nada; o Python falha no meio (`TypeError`,
+  `IllegalCharacterError`) ou, no limite de linhas, grava um arquivo que o
+  Excel não abre; (4) o temporário tem nome único (`*.{guid}.parcial`), não o
+  `.parcial` fixo, para duas exportações ao mesmo alvo não se atropelarem;
+  (5) só de contêiner: texto vazio (`Motivo_Inconsistencia` das linhas
+  válidas) não gera célula; o openpyxl grava `<c t="inlineStr"/>`. Reabertos,
+  os dois dão célula vazia.
+- **Limitação conhecida, igual ao Python — fórmula no CSV:** os CSVs do ZIP
+  levam o valor como veio da base, sem prefixo; texto que começa com `=`,
+  `+`, `-` ou `@` pode ser interpretado como fórmula se o CSV for aberto
+  direto no Excel. O Luna não altera o dado (o CSV é igual byte a byte ao do
+  Python); para abrir no Excel, prefira o `.xlsx` ou importe o CSV como texto.
 
 ## Regras da migração
 

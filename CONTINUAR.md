@@ -6,8 +6,9 @@ Estado em 19/10/2026.
 
 | Item | Situação |
 |---|---|
-| `main` | até o PR7: leitura de XLSX/CSV com menos memória e alocação (`9ccd183`) |
-| PR #27 — `pr8-saidas-exportacao` | preparação das 8 saídas da exportação (PR8), **aberto para revisão** |
+| `main` | até o PR8: as 8 saídas da exportação preparadas (`5f0b7e1`) |
+| PR #28 — `pr9-exportacao` | gravação da exportação em Excel e ZIP/CSV (PR9), **aberto para revisão** |
+| PR #27 — `pr8-saidas-exportacao` | preparação das 8 saídas da exportação (PR8), **mergeado** em 19/10 (`5f0b7e1`) |
 | PR #26 — `pr7-memoria-leitura` | otimização da leitura (PR7), **mergeado** em 19/10 (`9ccd183`) |
 | PR #24 — `pr6c-csv-cr-sem-laco` | correções do CSV (laço com CR, ponto do fuso), **mergeado** (`a2e15c2`) |
 | PR #23 — `pr6b-leitura-xlsx` | leitura de XLSX/XLSM com DocumentFormat.OpenXml 3.5.1, **mergeado** (`b14bc18`) |
@@ -15,10 +16,36 @@ Estado em 19/10/2026.
 | Roteiros das fases | `LUNA_REVALIDACAO_POS_CORRECOES_PLAN.md`, `LUNA_MIGRACAO_CSHARP_FASE0_PLAN.md` |
 | Estado detalhado da migração | `dotnet/README.md` |
 
-Próximos passos combinados: gravação da exportação (Excel/ZIP, PR9, a
-planejar depois da aprovação do PR8) e, por último, a interface WPF.
+Próximos passos combinados: revisão do PR9 e, por último, a interface WPF
+(só a pedido).
 
-## Saídas da exportação (PR8, PR #27, 19/10/2026)
+## Gravação da exportação (PR9, PR #28, 20/10/2026)
+
+- `Exportador.Exportar(resultado, "xlsx"|"zip", destino, cancelamento)`:
+  temporário único na pasta de destino, publicação só no fim, temporário
+  apagado e arquivo anterior preservado em erro/cancelamento. Excel recusado
+  com data com fuso (ZIP mantém o offset), aba acima do limite ou caractere de
+  controle. Detalhes, divergências e benchmark em `dotnet/README.md`.
+- Referência no repo: `dotnet/tests/Luna.Integration.Tests/dados/exportacao/`
+  (`gerar_exportacao.py` → `esperado.json`, 13 casos; conteúdo de cada CSV e
+  de cada célula do XML, não o contêiner).
+- Fuzz fora do repo (modo `exportar`; `para_exportar.py` converte jobs,
+  `comparar_exportacao.py` compara e classifica): 11.492 jobs × xlsx/zip, só
+  divergências intencionais. 23 mutantes detectados, 1 equivalente.
+- Base de 300 mil linhas: conteúdo das 8 saídas igual ao Python (CSV byte a
+  byte; XLSX célula a célula). Exportar: ZIP 3,2–3,5 s, XLSX 11,0–11,3 s, pico
+  +1–3 MB sobre o processamento (Python: 10–31 s e 175–206 s).
+- Base real `data (1).xlsx` (fica em `Downloads`, fora do repo; 133.133
+  linhas × 45 colunas): 8 saídas, KPIs e exportação iguais ao Python
+  (350.946 registros comparados em fluxo pelo modo `saidas_linhas` do
+  harness + `comparar_saidas_linhas.py`). Processar 6,0 s, exportar ZIP
+  5,6 s, XLSX 15,6 s (Python: 49,6 s, 67,3 s e 283,9 s). Agregados em
+  `dotnet/README.md`.
+- Decisões definitivas (revisão de 20/10): `=` como texto (não fórmula) e
+  `\r` preservado (`&#xD;`) no Excel; no CSV o valor sai cru como no Python
+  (risco de fórmula ao abrir o CSV direto no Excel, documentado).
+
+## Saídas da exportação (PR8, PR #27, mergeado em 19/10/2026)
 
 - `SaidasExportacao` monta as 8 tabelas de `SAIDAS` como visões sobre a
   `TabelaBruta` e os registros classificados (sem cópia), no primeiro acesso a
@@ -116,7 +143,7 @@ Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.
 
 ```powershell
 .venv\Scripts\python -m pytest -q        # 98 passed
-dotnet test dotnet\Luna.sln              # 289 + 118 passed
+dotnet test dotnet\Luna.sln              # 289 + 171 passed
 ```
 
 O contrato só vale com as versões travadas (`tests/test_contrato.py` falha
