@@ -1,0 +1,143 @@
+<UserControl x:Class="Luna.Desktop.Views.BaseView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="36,28" MaxWidth="1000" HorizontalAlignment="Left">
+      <TextBlock Text="Base" Style="{StaticResource Titulo}" />
+      <TextBlock Text="Escolha a base (CSV, XLSX ou XLSM) e os parâmetros, e processe. Tudo roda neste computador."
+                 Style="{StaticResource Apoio}" />
+
+      <!-- Arquivo -->
+      <Border Style="{StaticResource Cartao}">
+        <StackPanel>
+          <TextBlock Text="Arquivo" Style="{StaticResource TituloSecao}" />
+          <TextBlock Text="Caminho do arquivo" Style="{StaticResource Rotulo}" />
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Content="Procurar…" Margin="8,0,0,0" MinWidth="110"
+                    Command="{Binding ProcurarCommand}" IsEnabled="{Binding EmExecucao, Converter={StaticResource Negar}}"
+                    AutomationProperties.AutomationId="BotaoProcurar" />
+            <TextBox Text="{Binding Caminho, UpdateSourceTrigger=PropertyChanged}"
+                     AutomationProperties.AutomationId="CampoCaminho" AutomationProperties.Name="Caminho do arquivo" />
+          </DockPanel>
+          <TextBlock Text="Aceita .csv, .xlsx e .xlsm, em qualquer pasta do disco ou da rede." Style="{StaticResource Dica}" />
+        </StackPanel>
+      </Border>
+
+      <!-- Parâmetros -->
+      <Border Style="{StaticResource Cartao}">
+        <StackPanel>
+          <TextBlock Text="Parâmetros" Style="{StaticResource TituloSecao}" />
+          <UniformGrid Columns="3">
+            <StackPanel Margin="0,0,16,12">
+              <TextBlock Text="Tempo mínimo de expurgo (s)" Style="{StaticResource Rotulo}" />
+              <TextBox Text="{Binding TempoMinExpurgo, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="CampoTempoMinExpurgo" />
+              <TextBlock Text="Abaixo disto a entrega vai para Expurgados." Style="{StaticResource Dica}" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,12">
+              <TextBlock Text="Tempo máximo para anomalia (s)" Style="{StaticResource Rotulo}" />
+              <TextBox Text="{Binding TempoMaxAnomalia, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="CampoTempoMaxAnomalia" />
+              <TextBlock Text="Acima disto a entrega vai para Anomalias." Style="{StaticResource Dica}" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,12">
+              <TextBlock Text="Eventos prévios" Style="{StaticResource Rotulo}" />
+              <TextBox Text="{Binding EventosPrevios, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="CampoEventosPrevios" />
+              <TextBlock Text="Quantas entregas mais recentes entram na mediana." Style="{StaticResource Dica}" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,12">
+              <TextBlock Text="Mínimo de apontamentos por cliente" Style="{StaticResource Rotulo}" />
+              <TextBox Text="{Binding MinimoApontamentos, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="CampoMinimoApontamentos" />
+              <TextBlock Text="Abaixo disto aplica o tempo padrão." Style="{StaticResource Dica}" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,12">
+              <TextBlock Text="Tempo padrão para poucos apontamentos (s)" Style="{StaticResource Rotulo}" />
+              <TextBox Text="{Binding TempoPadraoPoucosApontamentos, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="CampoTempoPadrao" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,12">
+              <TextBlock Style="{StaticResource Rotulo}">
+                <Run Text="Ajuste percentual:" /> <Run Text="{Binding AjustePercentual, StringFormat={}{0:0}%}" />
+              </TextBlock>
+              <Slider Minimum="-20" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
+                      Value="{Binding AjustePercentual}" AutomationProperties.AutomationId="CampoAjustePercentual" />
+            </StackPanel>
+          </UniformGrid>
+        </StackPanel>
+      </Border>
+
+      <!-- Janela de entrega -->
+      <Border Style="{StaticResource Cartao}">
+        <StackPanel>
+          <TextBlock Text="Janela de entrega" Style="{StaticResource TituloSecao}" />
+          <UniformGrid Columns="3">
+            <StackPanel Margin="0,0,16,12">
+              <TextBlock Text="Cálculo" Style="{StaticResource Rotulo}" />
+              <CheckBox Content="Exibir janelas de entrega" IsChecked="{Binding ExibirJanelasEntrega}"
+                        AutomationProperties.AutomationId="CampoExibirJanelas" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,12">
+              <TextBlock Style="{StaticResource Rotulo}">
+                <Run Text="Cobertura da janela:" /> <Run Text="{Binding CoberturaJanela, StringFormat={}{0}%}" />
+              </TextBlock>
+              <Slider Minimum="50" Maximum="95" TickFrequency="5" IsSnapToTickEnabled="True"
+                      Value="{Binding CoberturaJanela}" AutomationProperties.AutomationId="CampoCobertura" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,12">
+              <TextBlock Text="Base para cálculo da janela" Style="{StaticResource Rotulo}" />
+              <ComboBox ItemsSource="{Binding BasesJanela}" SelectedItem="{Binding BaseJanela}"
+                        AutomationProperties.AutomationId="CampoBaseJanela" />
+            </StackPanel>
+          </UniformGrid>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+  <!-- Ação, estado e progresso: barra fixa, sempre visível. -->
+  <Border Grid.Row="1" Padding="36,14,36,16" BorderThickness="0,1,0,0"
+          BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <Button Content="Processar base" MinWidth="150" Command="{Binding ProcessarCommand}"
+                  Background="{StaticResource LunaExecutar}" Foreground="White"
+                  AutomationProperties.AutomationId="BotaoProcessar" />
+          <Button Content="Cancelar" MinWidth="110" Margin="8,0,0,0" Command="{Binding ProcessarCancelCommand}"
+                  Visibility="{Binding EmExecucao, Converter={StaticResource Visivel}}"
+                  AutomationProperties.AutomationId="BotaoCancelar" />
+          <TextBlock Text="{Binding TextoEstado}" Margin="16,0,0,0" VerticalAlignment="Center"
+                     AutomationProperties.AutomationId="TextoEstado" />
+        </StackPanel>
+        <ProgressBar IsIndeterminate="True" Height="4" Margin="0,14,0,0"
+                     Visibility="{Binding EmExecucao, Converter={StaticResource Visivel}}" />
+        <ItemsControl ItemsSource="{Binding Estagios}" Margin="0,14,0,0" Focusable="False">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border x:Name="Fundo" Style="{StaticResource Etiqueta}">
+                <TextBlock x:Name="Texto" Text="{Binding Rotulo}" Opacity="0.55" />
+              </Border>
+              <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Iniciado}" Value="True">
+                  <Setter TargetName="Fundo" Property="BorderBrush" Value="{StaticResource LunaAcento}" />
+                  <Setter TargetName="Texto" Property="Opacity" Value="1" />
+                </DataTrigger>
+              </DataTemplate.Triggers>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Border BorderBrush="{StaticResource LunaErro}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,8,0,0"
+                Visibility="{Binding MensagemDeErro, Converter={StaticResource TemTexto}}">
+          <TextBlock Text="{Binding MensagemDeErro}" TextWrapping="Wrap" Foreground="{StaticResource LunaErro}"
+                     AutomationProperties.AutomationId="TextoErro" />
+        </Border>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

@@ -1,0 +1,86 @@
+<UserControl x:Class="Luna.Desktop.Views.ProcessamentoView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <UserControl.Resources>
+    <!-- Linhas rótulo: valor. -->
+    <DataTemplate x:Key="Ficha">
+      <Grid Margin="0,0,0,6">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="280" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding Rotulo}" Opacity="0.75" />
+        <TextBlock Grid.Column="1" Text="{Binding Valor}" TextWrapping="Wrap" AutomationProperties.AutomationId="{Binding Rotulo}" />
+      </Grid>
+    </DataTemplate>
+  </UserControl.Resources>
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="36,28" MaxWidth="1000" HorizontalAlignment="Left">
+      <TextBlock Text="Processamento" Style="{StaticResource Titulo}" />
+      <TextBlock AutomationProperties.AutomationId="ProcessamentoSemResultado">
+        <TextBlock.Style>
+          <Style TargetType="TextBlock" BasedOn="{StaticResource Apoio}">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="Text" Value="Processe uma base para ver os KPIs." />
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding TemResultado}" Value="False">
+                <Setter Property="Visibility" Value="Visible" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </TextBlock.Style>
+      </TextBlock>
+
+      <StackPanel Visibility="{Binding TemResultado, Converter={StaticResource Visivel}}">
+        <TextBlock Text="{Binding Caminho}" Style="{StaticResource Apoio}" />
+
+        <Border Style="{StaticResource Cartao}">
+          <StackPanel>
+            <TextBlock Text="KPIs" Style="{StaticResource TituloSecao}" />
+            <TextBlock Text="Estrutura inválida: sem KPIs. Veja a seção Validação." Foreground="{StaticResource LunaErro}"
+                       Visibility="{Binding TemKpis, Converter={StaticResource TemTexto}, ConverterParameter=inverso}" />
+            <ItemsControl ItemsSource="{Binding Kpis}" AutomationProperties.AutomationId="ListaKpis">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Columns="4" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Style="{StaticResource Etiqueta}" Padding="14,10" Margin="0,0,10,10">
+                    <StackPanel>
+                      <TextBlock Text="{Binding Rotulo}" FontSize="12" Opacity="0.75" />
+                      <TextBlock Text="{Binding Valor}" FontSize="22" FontWeight="SemiBold"
+                                 AutomationProperties.AutomationId="{Binding Rotulo}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Cartao}">
+          <StackPanel>
+            <TextBlock Text="Resumo" Style="{StaticResource TituloSecao}" />
+            <ItemsControl ItemsSource="{Binding Resumo}" ItemTemplate="{StaticResource Ficha}" />
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Cartao}">
+          <StackPanel>
+            <TextBlock Text="Parâmetros usados" Style="{StaticResource TituloSecao}" />
+            <ItemsControl ItemsSource="{Binding Parametros}" ItemTemplate="{StaticResource Ficha}" />
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Cartao}">
+          <StackPanel>
+            <TextBlock Text="Janelas de entrega" Style="{StaticResource TituloSecao}" />
+            <ItemsControl ItemsSource="{Binding Janelas}" ItemTemplate="{StaticResource Ficha}" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

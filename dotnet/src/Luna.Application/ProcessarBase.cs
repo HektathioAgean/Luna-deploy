@@ -23,6 +23,9 @@ public sealed record ResultadoProcessamento(
     IReadOnlyList<string> Avisos)
 {
     internal TabelaBruta? Bruta { get; init; }
+
+    /// <summary>Nomes das colunas como estão no arquivo, na ordem de <see cref="ColunasPadronizadas"/>.</summary>
+    public IReadOnlyList<string> ColunasOriginais => Bruta?.Colunas ?? [];
     internal ResultadoTransformacao? Transformacao { get; init; }
 
     private IReadOnlyList<TabelaSaida>? _saidas;
