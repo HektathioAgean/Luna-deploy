@@ -32,7 +32,7 @@ public static class LeitorCsv
     private static readonly byte[] IndefinidosCp1252 = [0x81, 0x8D, 0x8F, 0x90, 0x9D];
 
     /// <exception cref="BaseInvalidaException">Nenhuma tentativa produziu mais de uma coluna.</exception>
-    public static TabelaBruta Ler(string caminho)
+    public static TabelaBruta Ler(string caminho, CancellationToken cancelamento = default)
     {
         byte[] bytes = File.ReadAllBytes(caminho);
         string nome = Path.GetFileName(caminho);
@@ -41,6 +41,8 @@ public static class LeitorCsv
 
         foreach (var (separador, encoding) in Tentativas)
         {
+            // Cada tentativa lê o arquivo todo (0,2 s em 300 mil linhas): confere entre elas.
+            cancelamento.ThrowIfCancellationRequested();
             TabelaBruta tabela;
             try
             {

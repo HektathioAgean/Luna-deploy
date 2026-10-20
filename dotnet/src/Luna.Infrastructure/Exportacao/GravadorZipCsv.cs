@@ -17,11 +17,15 @@ internal static class GravadorZipCsv
     private static readonly byte[] Bom = [0xEF, 0xBB, 0xBF];
     private const string FimDeLinha = "\r\n";
 
-    public static void Gravar(IReadOnlyList<TabelaSaida> saidas, Stream destino, CancellationToken cancelamento)
+    /// <param name="aoIniciarAba">Chamado com o índice (0 a 7) antes de gravar cada CSV.</param>
+    public static void Gravar(
+        IReadOnlyList<TabelaSaida> saidas, Stream destino, CancellationToken cancelamento, Action<int>? aoIniciarAba = null)
     {
         using var zip = new ZipArchive(destino, ZipArchiveMode.Create, leaveOpen: true);
-        foreach (var tabela in saidas)
+        for (int k = 0; k < saidas.Count; k++)
         {
+            var tabela = saidas[k];
+            aoIniciarAba?.Invoke(k);
             using var entrada = zip.CreateEntry(tabela.ArquivoCsv, CompressionLevel.Optimal).Open();
             entrada.Write(Bom);
             using var escritor = new StreamWriter(entrada, new UTF8Encoding(false), 1 << 16);

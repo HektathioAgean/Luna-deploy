@@ -34,11 +34,11 @@ internal readonly record struct CelulaExcel(object? Valor, string? FormatoNumero
 public static partial class LeitorXlsx
 {
     /// <exception cref="BaseInvalidaException">Arquivo ilegível ou célula inválida.</exception>
-    public static TabelaBruta Ler(string caminho)
+    public static TabelaBruta Ler(string caminho, CancellationToken cancelamento = default)
     {
         try
         {
-            return LerTabela(caminho);
+            return LerTabela(caminho, cancelamento);
         }
         catch (Exception e) when (e is OpenXmlPackageException or InvalidDataException or FileFormatException)
         {
@@ -50,7 +50,7 @@ public static partial class LeitorXlsx
         }
     }
 
-    private static TabelaBruta LerTabela(string caminho)
+    private static TabelaBruta LerTabela(string caminho, CancellationToken cancelamento)
     {
         using var linhas = Linhas(caminho).GetEnumerator();
         var primeira = linhas.MoveNext() ? linhas.Current : [];
@@ -65,6 +65,8 @@ public static partial class LeitorXlsx
         var dados = new List<object?[]>();
         while (linhas.MoveNext())
         {
+            if ((dados.Count & 0x3FF) == 0)
+                cancelamento.ThrowIfCancellationRequested();
             var linha = linhas.Current;
             var valores = new object?[largura];
             for (int i = 0; i < Math.Min(largura, linha.Count); i++)

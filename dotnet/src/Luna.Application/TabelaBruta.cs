@@ -12,6 +12,18 @@ public interface ILeitorDeBase
     /// <exception cref="FileNotFoundException">Arquivo inexistente.</exception>
     /// <exception cref="BaseInvalidaException">Arquivo ilegível ou formato não suportado.</exception>
     TabelaBruta Carregar(string caminho);
+
+    /// <summary>
+    /// Como <see cref="Carregar(string)"/>, parando com
+    /// <see cref="OperationCanceledException"/> se <paramref name="cancelamento"/>
+    /// for acionado. O padrão só confere antes de ler; a Infrastructure confere
+    /// também durante a leitura.
+    /// </summary>
+    TabelaBruta Carregar(string caminho, CancellationToken cancelamento)
+    {
+        cancelamento.ThrowIfCancellationRequested();
+        return Carregar(caminho);
+    }
 }
 
 /// <summary>

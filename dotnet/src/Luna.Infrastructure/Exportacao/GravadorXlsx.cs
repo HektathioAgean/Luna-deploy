@@ -94,7 +94,9 @@ internal static class GravadorXlsx
         }
     }
 
-    public static void Gravar(IReadOnlyList<TabelaSaida> saidas, Stream destino, CancellationToken cancelamento)
+    /// <param name="aoIniciarAba">Chamado com o índice (0 a 7) antes de gravar cada aba.</param>
+    public static void Gravar(
+        IReadOnlyList<TabelaSaida> saidas, Stream destino, CancellationToken cancelamento, Action<int>? aoIniciarAba = null)
     {
         using var zip = new ZipArchive(destino, ZipArchiveMode.Create, leaveOpen: true);
         Parte(zip, "[Content_Types].xml", TiposDeConteudo(saidas.Count));
@@ -106,6 +108,7 @@ internal static class GravadorXlsx
         Parte(zip, "xl/styles.xml", Estilos);
         for (int k = 0; k < saidas.Count; k++)
         {
+            aoIniciarAba?.Invoke(k);
             using var parte = zip.CreateEntry($"xl/worksheets/sheet{k + 1}.xml", CompressionLevel.Optimal).Open();
             using var xml = XmlWriter.Create(parte, new XmlWriterSettings
             {
