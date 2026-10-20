@@ -17,3 +17,7 @@ dotnet/tests/Luna.Integration.Tests/dados/saidas/*.json -text
 dotnet/tests/Luna.Integration.Tests/dados/exportacao/*.xlsx binary
 dotnet/tests/Luna.Integration.Tests/dados/exportacao/*.csv -text
 dotnet/tests/Luna.Integration.Tests/dados/exportacao/*.json -text
+
+# Bases e avisos de referência do progresso (PR10).
+dotnet/tests/Luna.Integration.Tests/dados/progresso/*.csv -text
+dotnet/tests/Luna.Integration.Tests/dados/progresso/*.json -text

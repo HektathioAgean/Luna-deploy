@@ -7,6 +7,7 @@ Estado em 20/10/2026.
 | Item | Situação |
 |---|---|
 | `main` | até o PR9: exportação em Excel e ZIP/CSV (`def4393`) |
+| PR #30 — `pr10-progresso-cancelamento` | progresso por estágio e cancelamento (PR10), **aberto para revisão** |
 | PR #28 — `pr9-exportacao` | gravação da exportação em Excel e ZIP/CSV (PR9), **mergeado** em 20/10 (`def4393`) |
 | PR #27 — `pr8-saidas-exportacao` | preparação das 8 saídas da exportação (PR8), **mergeado** em 19/10 (`5f0b7e1`) |
 | PR #26 — `pr7-memoria-leitura` | otimização da leitura (PR7), **mergeado** em 19/10 (`9ccd183`) |
@@ -21,6 +22,19 @@ Próximo passo: interface WPF com o escopo **aprovado em 20/10** em
 Exportação; ScottPlot 5 depois de protótipo; CommunityToolkit.Mvvm;
 self-contained win-x64 portátil; Fluent). Ordem do §5: PR10 (progresso e
 cancelamento, sem UI), PR11 (painel do cliente em Application), depois a UI.
+
+## Progresso e cancelamento (PR10, PR #30, 20/10/2026)
+
+- `IProgress<EstagioProcessamento>` em `ProcessarBase.Executar` (estágios do
+  Python, sem `base_detalhada`) e `IProgress<ProgressoExportacao>` no
+  `Exportador` (validação, uma gravação por aba, publicação, concluído);
+  `CancellationToken` entre estágios, na leitura e na gravação. Chamadas
+  antigas e resultados iguais.
+- Referência no repo: `dotnet/tests/Luna.Integration.Tests/dados/progresso/`
+  (`gerar_progresso.py` → `esperado.json`: estágios do Python por caso).
+- 15 mutantes, 15 detectados (4 deles dos ajustes da revisão: bloco do CSV,
+  laço do Excel, pré-passe do CSV, busca de fuso). Testes de cancelamento sem
+  temporizador: token já cancelado × interrupção no meio da leitura.
 
 ## Gravação da exportação (PR9, PR #28, mergeado em 20/10/2026)
 
@@ -149,7 +163,7 @@ Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.
 
 ```powershell
 .venv\Scripts\python -m pytest -q        # 98 passed
-dotnet test dotnet\Luna.sln              # 289 + 171 passed
+dotnet test dotnet\Luna.sln              # 289 + 191 passed
 ```
 
 O contrato só vale com as versões travadas (`tests/test_contrato.py` falha

@@ -32,7 +32,7 @@ public static class LeitorCsv
     private static readonly byte[] IndefinidosCp1252 = [0x81, 0x8D, 0x8F, 0x90, 0x9D];
 
     /// <exception cref="BaseInvalidaException">Nenhuma tentativa produziu mais de uma coluna.</exception>
-    public static TabelaBruta Ler(string caminho)
+    public static TabelaBruta Ler(string caminho, CancellationToken cancelamento = default)
     {
         byte[] bytes = File.ReadAllBytes(caminho);
         string nome = Path.GetFileName(caminho);
@@ -45,7 +45,7 @@ public static class LeitorCsv
             try
             {
                 var (codificacao, inicio) = Validar(bytes, encoding);
-                tabela = Montar(TokenizadorCsv.Tokenizar(bytes, inicio, codificacao, separador));
+                tabela = Montar(TokenizadorCsv.Tokenizar(bytes, inicio, codificacao, separador, cancelamento: cancelamento));
             }
             catch (Exception e) when (e is ErroDeTokenizacaoException or DecoderFallbackException or ErroDeDecodificacaoException)
             {

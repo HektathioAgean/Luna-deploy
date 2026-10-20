@@ -54,7 +54,8 @@ internal static class GravadorXlsx
     /// removido em silêncio) e aba acima de 1.048.576 linhas ou 16.384 colunas.
     /// </summary>
     /// <exception cref="ExportacaoRecusadaException"/>
-    public static void Validar(IReadOnlyList<TabelaSaida> saidas)
+    /// <param name="cancelamento">Conferido a cada 1.024 linhas na busca de datas com fuso.</param>
+    public static void Validar(IReadOnlyList<TabelaSaida> saidas, CancellationToken cancelamento = default)
     {
         foreach (var tabela in saidas)
         {
@@ -78,8 +79,11 @@ internal static class GravadorXlsx
             var comFuso = Enumerable.Range(0, tabela.Colunas.Count).Where(j => tabela.Colunas[j].Fuso is not null).ToList();
             if (comFuso.Count == 0 || Vazia(tabela))
                 continue;
+            int n = 0;
             foreach (var linha in tabela.Linhas())
             {
+                if ((++n & 0x3FF) == 0)
+                    cancelamento.ThrowIfCancellationRequested();
                 foreach (int j in comFuso)
                 {
                     if (linha[j] is DateTimeOffset data)
@@ -94,7 +98,9 @@ internal static class GravadorXlsx
         }
     }
 
-    public static void Gravar(IReadOnlyList<TabelaSaida> saidas, Stream destino, CancellationToken cancelamento)
+    /// <param name="aoIniciarAba">Chamado com o índice (0 a 7) antes de gravar cada aba.</param>
+    public static void Gravar(
+        IReadOnlyList<TabelaSaida> saidas, Stream destino, CancellationToken cancelamento, Action<int>? aoIniciarAba = null)
     {
         using var zip = new ZipArchive(destino, ZipArchiveMode.Create, leaveOpen: true);
         Parte(zip, "[Content_Types].xml", TiposDeConteudo(saidas.Count));
@@ -106,6 +112,7 @@ internal static class GravadorXlsx
         Parte(zip, "xl/styles.xml", Estilos);
         for (int k = 0; k < saidas.Count; k++)
         {
+            aoIniciarAba?.Invoke(k);
             using var parte = zip.CreateEntry($"xl/worksheets/sheet{k + 1}.xml", CompressionLevel.Optimal).Open();
             using var xml = XmlWriter.Create(parte, new XmlWriterSettings
             {

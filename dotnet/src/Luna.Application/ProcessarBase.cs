@@ -38,6 +38,29 @@ public sealed record ResultadoProcessamento(
 }
 
 /// <summary>
+/// Estágios do processamento, na ordem em que são avisados: os do
+/// <c>_executar</c> do Python (<c>leitura</c>, <c>padronizacao</c>,
+/// <c>validacao</c>, <c>transformacao</c>, <c>regras_operacionais</c>,
+/// <c>medianas</c>, <c>kpis</c>, <c>janelas</c>, <c>concluido</c>) que têm
+/// trabalho aqui. Sem <c>base_detalhada</c> (o C# a monta só na exportação) e
+/// sem <c>cache</c>. Esquema inválido termina em <see cref="Validacao"/>, sem
+/// <see cref="Concluido"/>, como no Python; <see cref="Janelas"/> só quando
+/// as janelas são calculadas.
+/// </summary>
+public enum EstagioProcessamento
+{
+    Leitura,
+    Padronizacao,
+    Validacao,
+    Transformacao,
+    RegrasOperacionais,
+    Medianas,
+    Kpis,
+    Janelas,
+    Concluido,
+}
+
+/// <summary>
 /// Caso de uso "processar a base" (src/pipeline.py, _executar): leitura,
 /// padronização e validação das colunas, transformação, tempos por cliente,
 /// KPIs e janelas, na mesma ordem do motor.
@@ -48,13 +71,28 @@ public sealed class ProcessarBase(ILeitorDeBase leitor)
     /// <exception cref="BaseInvalidaException">Base vazia ou ilegível.</exception>
     /// <exception cref="FormatoDeDataException">Datas ambíguas.</exception>
     /// <exception cref="KeyNotFoundException">Coluna obrigatória com o nome original repetido.</exception>
-    public ResultadoProcessamento Executar(ParametrosProcessamento parametros)
+    /// <exception cref="OperationCanceledException">
+    /// Cancelado: conferido antes de cada estágio e durante a leitura; nada é devolvido.
+    /// </exception>
+    public ResultadoProcessamento Executar(
+        ParametrosProcessamento parametros,
+        IProgress<EstagioProcessamento>? progresso = null,
+        CancellationToken cancelamento = default)
     {
-        TabelaBruta bruta = leitor.Carregar(parametros.Caminho);
+        void Avisar(EstagioProcessamento estagio)
+        {
+            cancelamento.ThrowIfCancellationRequested();
+            progresso?.Report(estagio);
+        }
+
+        Avisar(EstagioProcessamento.Leitura);
+        TabelaBruta bruta = leitor.Carregar(parametros.Caminho, cancelamento);
         if (bruta.Linhas.Count == 0 || bruta.Colunas.Count == 0)
             throw new BaseInvalidaException($"A base '{Path.GetFileName(parametros.Caminho)}' esta vazia.");
 
+        Avisar(EstagioProcessamento.Padronizacao);
         var colunas = EsquemaColunas.Padronizar(bruta.Colunas);
+        Avisar(EstagioProcessamento.Validacao);
         var esquema = EsquemaColunas.Analisar(colunas);
         if (!esquema.Valido)
             return new ResultadoProcessamento(parametros, bruta.Linhas.Count, colunas, esquema,
@@ -63,6 +101,7 @@ public sealed class ProcessarBase(ILeitorDeBase leitor)
                 Bruta = bruta,
             };
 
+        Avisar(EstagioProcessamento.Transformacao);
         int cliente = IndiceDe(colunas, "Cod_Cliente");
         int chegou = IndiceDe(colunas, "Chegou_em");
         int finalizada = IndiceDe(colunas, "Finalizada_em");
@@ -71,13 +110,16 @@ public sealed class ProcessarBase(ILeitorDeBase leitor)
             .ToList();
 
         var transformacao = Transformacao.Transformar(registros, parametros.Regras);
+        Avisar(EstagioProcessamento.RegrasOperacionais);
         var porClasse = transformacao.Registros.ToLookup(r => r.Classe);
         var processados = porClasse[Classe.Processado].ToList();
 
+        Avisar(EstagioProcessamento.Medianas);
         var tempos = TemposPorCliente.Calcular(
             processados.Select(p => new RegistroTempo(p.Origem.CodCliente!, p.Origem.ChegouEm!.Value, p.TempoSec!.Value)),
             parametros.Tempos);
 
+        Avisar(EstagioProcessamento.Kpis);
         var kpis = Kpis.Calcular(
             bruta.Linhas.Count,
             processados.Select(p => p.Origem.CodCliente!).ToList(),
@@ -89,6 +131,7 @@ public sealed class ProcessarBase(ILeitorDeBase leitor)
         IReadOnlyList<JanelaCliente> janelas = [];
         if (parametros.ExibirJanelasEntrega)
         {
+            Avisar(EstagioProcessamento.Janelas);
             bool porChegada = parametros.BaseJanela == "Chegou_em";
             janelas = JanelasDeAtendimento.Calcular(
                 processados.Select(p => new RegistroHorario(
@@ -97,6 +140,7 @@ public sealed class ProcessarBase(ILeitorDeBase leitor)
                 parametros.BaseJanela);
         }
 
+        Avisar(EstagioProcessamento.Concluido);
         return new ResultadoProcessamento(
             parametros, bruta.Linhas.Count, colunas, esquema,
             porClasse[Classe.Inconsistente].ToList(), processados,

@@ -8,6 +8,27 @@ namespace Luna.Infrastructure.Exportacao;
 /// </summary>
 public sealed class ExportacaoRecusadaException(string mensagem) : Exception(mensagem);
 
+/// <summary>Etapas da exportação, na ordem em que são avisadas.</summary>
+public enum EtapaExportacao
+{
+    /// <summary>Só no Excel: fuso e limites conferidos antes de criar o arquivo.</summary>
+    Validacao,
+    /// <summary>Uma por saída, antes de gravar a aba (Excel) ou o CSV (ZIP).</summary>
+    Gravacao,
+    /// <summary>Arquivo completo; o temporário vai substituir o alvo.</summary>
+    Publicacao,
+    Concluido,
+}
+
+/// <summary>
+/// Um aviso de progresso da exportação. Em <see cref="EtapaExportacao.Gravacao"/>:
+/// <paramref name="Aba"/> de 1 a <paramref name="TotalAbas"/>, <paramref name="Nome"/>
+/// (aba do Excel ou CSV do ZIP) e <paramref name="Linhas"/> da tabela. Sem
+/// percentual: cada aviso é um passo que de fato começou.
+/// </summary>
+public sealed record ProgressoExportacao(
+    EtapaExportacao Etapa, int Aba = 0, int TotalAbas = 0, string? Nome = null, int Linhas = 0);
+
 /// <summary>
 /// <c>exportar</c> (src/pipeline.py): grava as oito saídas do processamento em
 /// Excel (<c>xlsx</c>) ou em ZIP de CSVs (<c>zip</c>).
@@ -29,9 +50,21 @@ public static class Exportador
     /// <exception cref="DirectoryNotFoundException">Pasta de destino inexistente.</exception>
     /// <exception cref="ExportacaoRecusadaException">Conteúdo que o Excel não comporta.</exception>
     /// <exception cref="OperationCanceledException">Cancelada; nada é publicado.</exception>
+    /// <param name="progresso">
+    /// Etapas na ordem: Validacao (só xlsx), Gravacao de cada saída, Publicacao, Concluido.
+    /// Os equivalentes do Python são <c>gravacao_{formato}</c> e <c>concluido</c>
+    /// (sem <c>releitura_base_bruta</c>: aqui a base não é relida).
+    /// </param>
     public static string Exportar(
-        ResultadoProcessamento resultado, string formato, string destino, CancellationToken cancelamento = default)
+        ResultadoProcessamento resultado, string formato, string destino, CancellationToken cancelamento = default,
+        IProgress<ProgressoExportacao>? progresso = null)
     {
+        void Avisar(ProgressoExportacao aviso)
+        {
+            cancelamento.ThrowIfCancellationRequested();
+            progresso?.Report(aviso);
+        }
+
         if (formato is not ("xlsx" or "zip"))
             throw new ArgumentException($"Formato invalido: '{formato}'. Valores aceitos: xlsx, zip.");
 
@@ -45,7 +78,12 @@ public static class Exportador
 
         var saidas = resultado.Saidas;
         if (formato == "xlsx")
-            GravadorXlsx.Validar(saidas);
+        {
+            Avisar(new ProgressoExportacao(EtapaExportacao.Validacao));
+            GravadorXlsx.Validar(saidas, cancelamento);
+        }
+        void AoIniciarAba(int k) => Avisar(new ProgressoExportacao(EtapaExportacao.Gravacao, k + 1, saidas.Count,
+            formato == "xlsx" ? saidas[k].Aba : saidas[k].ArquivoCsv, saidas[k].Quantidade));
 
         // Nome único: duas exportações para o mesmo alvo não disputam o temporário.
         string temporario = Path.Combine(pasta, $"{Path.GetFileName(alvo)}.{Guid.NewGuid():N}.parcial");
@@ -54,12 +92,12 @@ public static class Exportador
             using (var arquivo = new FileStream(temporario, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1 << 16))
             {
                 if (formato == "xlsx")
-                    GravadorXlsx.Gravar(saidas, arquivo, cancelamento);
+                    GravadorXlsx.Gravar(saidas, arquivo, cancelamento, AoIniciarAba);
                 else
-                    GravadorZipCsv.Gravar(saidas, arquivo, cancelamento);
+                    GravadorZipCsv.Gravar(saidas, arquivo, cancelamento, AoIniciarAba);
                 arquivo.Flush(flushToDisk: true);
             }
-            cancelamento.ThrowIfCancellationRequested();
+            Avisar(new ProgressoExportacao(EtapaExportacao.Publicacao));
             Publicar(temporario, alvo);
         }
         catch
@@ -77,6 +115,8 @@ public static class Exportador
             }
             throw;
         }
+        // Já publicado: o cancelamento não desfaz mais nada.
+        progresso?.Report(new ProgressoExportacao(EtapaExportacao.Concluido));
         return alvo;
     }
 

@@ -162,6 +162,29 @@ de formato inválido e pasta inexistente.
   (`CancellationToken`) ou alvo aberto em outro programa, o temporário é
   apagado e o arquivo anterior fica como estava.
 
+PR10 — progresso e cancelamento, para a interface (sem UI neste PR):
+
+- `ProcessarBase.Executar(parametros, progresso, cancelamento)`:
+  `IProgress<EstagioProcessamento>` com os estágios do `_executar` do Python
+  que têm trabalho aqui, na mesma ordem (`Leitura`, `Padronizacao`,
+  `Validacao`, `Transformacao`, `RegrasOperacionais`, `Medianas`, `Kpis`,
+  `Janelas`, `Concluido`). Sem `base_detalhada` (montada só na exportação).
+  Esquema inválido para em `Validacao`, sem `Concluido`, como no Python; em
+  erro, os avisos param no estágio que falhou.
+- `Exportador.Exportar(..., cancelamento, progresso)`:
+  `IProgress<ProgressoExportacao>` com `Validacao` (só xlsx), uma `Gravacao`
+  por saída (aba 1–8, nome da aba ou do CSV, linhas da tabela), `Publicacao`
+  e `Concluido`. Nenhum percentual: cada aviso é um passo que começou de fato.
+- Cancelamento (`CancellationToken`): conferido antes de cada aviso, a cada
+  bloco de 64 KB decodificado na leitura do CSV, a cada 1.024 linhas na
+  leitura do Excel, na busca de datas com fuso do Excel, no pré-passe de
+  formatação dos CSVs e na gravação.
+  Cancelado, nada é devolvido nem publicado (o arquivo anterior fica).
+  `ILeitorDeBase` ganhou `Carregar(caminho, cancelamento)` com implementação
+  padrão: implementações antigas continuam valendo.
+- Chamadas antigas (`Executar(parametros)`, `Exportar(r, formato, destino)`)
+  não mudam, e o resultado é o mesmo com ou sem progresso/token.
+
 ### Base real (20/10/2026)
 
 Uma base operacional em XLSX (22,7 MB; 133.133 linhas × 45 colunas; 6.909

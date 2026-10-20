@@ -101,11 +101,16 @@ public sealed class ExportacaoTests : IDisposable
         string alvo = Path.Combine(_pasta, $"saida.{formato}");
         File.WriteAllText(alvo, "anterior");
         using var cancelado = new CancellationTokenSource();
-        cancelado.Cancel();
+        // Cancela quando a primeira aba começa: quem para é o laço de linhas do gravador.
+        var avisos = new Progresso(a =>
+        {
+            if (a is { Etapa: EtapaExportacao.Gravacao, Aba: 1 })
+                cancelado.Cancel();
+        });
 
-        var e = Assert.ThrowsAny<OperationCanceledException>(() => Exportador.Exportar(r, formato, alvo, cancelado.Token));
+        var e = Assert.ThrowsAny<OperationCanceledException>(() => Exportador.Exportar(r, formato, alvo, cancelado.Token, avisos));
         // Parou dentro do gravador, antes de terminar a primeira aba (3.000 linhas).
-        Assert.Contains(formato == "xlsx" ? "GravadorXlsx" : "GravadorZipCsv", e.StackTrace);
+        Assert.Contains(formato == "xlsx" ? "GravadorXlsx.EscreverAba" : "GravadorZipCsv.Escrever", e.StackTrace);
         Assert.Equal("anterior", File.ReadAllText(alvo));
         Assert.Empty(Directory.GetFiles(_pasta, "*.parcial"));
     }
@@ -263,6 +268,11 @@ public sealed class ExportacaoTests : IDisposable
     [InlineData(1L, true, "0 days 00:00:00.000000100")]
     public void Duracao_no_csv_como_o_pandas(long ticks, bool longo, string esperado)
         => Assert.Equal(esperado, GravadorZipCsv.Timedelta(TimeSpan.FromTicks(ticks), longo));
+
+    private sealed class Progresso(Action<ProgressoExportacao> reagir) : IProgress<ProgressoExportacao>
+    {
+        public void Report(ProgressoExportacao value) => reagir(value);
+    }
 
     private static ResultadoProcessamento Teste()
         => Caso.Executar(new ParametrosProcessamento(Repositorio.Caminho("TESTE_data.csv")));
