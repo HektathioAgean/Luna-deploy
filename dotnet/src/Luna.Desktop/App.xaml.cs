@@ -24,9 +24,17 @@ public partial class App : System.Windows.Application
         var caso = new ProcessarBase(new CarregadorDeArquivo());
         var janela = new MainWindow();
         janela.DataContext = new PrincipalViewModel(
-            (parametros, progresso, cancelamento) => caso.Executar(parametros, progresso, cancelamento),
+            (parametros, progresso, cancelamento) =>
+            {
+                var resultado = caso.Executar(parametros, progresso, cancelamento);
+                // As 8 saídas (Resultados e Exportação) são montadas aqui, fora do thread da interface.
+                _ = resultado.Saidas;
+                return resultado;
+            },
+            ExportacaoDoMotor.Gravar,
             new DespachanteWpf(Dispatcher),
-            new EscolhaDeArquivoWpf(janela));
+            new EscolhaDeArquivoWpf(janela),
+            new DialogosDeExportacaoWpf(janela));
         MainWindow = janela;
         janela.Show();
     }

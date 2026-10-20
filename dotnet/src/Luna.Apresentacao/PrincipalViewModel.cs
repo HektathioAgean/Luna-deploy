@@ -8,27 +8,42 @@ namespace Luna.Apresentacao;
 public sealed record Secao(string Nome, string Icone, ObservableObject Conteudo);
 
 /// <summary>
-/// A janela principal: navegação lateral entre Base, Validação e
-/// Processamento. Cada resultado novo da Base atualiza as outras duas.
+/// A janela principal: navegação lateral entre Base, Validação,
+/// Processamento, Resultados e Exportação. Cada resultado novo da Base
+/// atualiza as outras. Processar e exportar não rodam ao mesmo tempo.
 /// </summary>
 public sealed partial class PrincipalViewModel : ObservableObject
 {
-    public PrincipalViewModel(ExecutorDeProcessamento executor, IDespachante despachante, IEscolhaDeArquivo escolha)
+    public PrincipalViewModel(
+        ExecutorDeProcessamento executor, ExecutorDeExportacao exportador, IDespachante despachante,
+        IEscolhaDeArquivo escolha, IDialogosDeExportacao dialogos)
     {
         Base = new BaseViewModel(executor, despachante, escolha);
+        Exportacao = new ExportacaoViewModel(exportador, despachante, dialogos);
         Secoes =
         [
             new("Base", "", Base),
             new("Validação", "", Validacao),
             new("Processamento", "", Processamento),
+            new("Resultados", "", Resultados),
+            new("Exportação", "", Exportacao),
         ];
         SecaoAtual = Secoes[0];
         Base.PropertyChanged += AoMudarBase;
+        // Durante a gravação a Base não processa: processar soltaria o resultado que está sendo gravado.
+        // No outro sentido, processar começa soltando o resultado, e sem resultado não há o que gravar.
+        Exportacao.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ExportacaoViewModel.EmExecucao))
+                Base.Bloqueado = Exportacao.EmExecucao;
+        };
     }
 
     public BaseViewModel Base { get; }
     public ValidacaoViewModel Validacao { get; } = new();
     public ProcessamentoViewModel Processamento { get; } = new();
+    public ResultadosViewModel Resultados { get; } = new();
+    public ExportacaoViewModel Exportacao { get; }
     public IReadOnlyList<Secao> Secoes { get; }
 
     [ObservableProperty]
@@ -40,5 +55,7 @@ public sealed partial class PrincipalViewModel : ObservableObject
             return;
         Validacao.Atualizar(Base.Resultado);
         Processamento.Atualizar(Base.Resultado);
+        Resultados.Atualizar(Base.Resultado);
+        Exportacao.Atualizar(Base.Resultado);
     }
 }

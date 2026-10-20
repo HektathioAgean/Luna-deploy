@@ -29,7 +29,7 @@ public sealed class ViewModelsTests : IDisposable
     private static readonly ExecutorDeProcessamento Real = (p, progresso, token) => Caso.Executar(p, progresso, token);
 
     private static PrincipalViewModel Principal(ExecutorDeProcessamento? executor = null, string? escolha = null)
-        => new(executor ?? Real, new Imediato(), new Escolha(escolha));
+        => new(executor ?? Real, Exportacoes.DoMotor, new Imediato(), new Escolha(escolha), new Dialogos());
 
     private static string Teste => Repositorio.Caminho("TESTE_data.csv");
 
@@ -52,7 +52,7 @@ public sealed class ViewModelsTests : IDisposable
     public void Navegacao_comeca_na_base()
     {
         var p = Principal();
-        Assert.Equal(["Base", "Validação", "Processamento"], p.Secoes.Select(s => s.Nome));
+        Assert.Equal(["Base", "Validação", "Processamento", "Resultados", "Exportação"], p.Secoes.Select(s => s.Nome));
         Assert.Same(p.Base, p.SecaoAtual.Conteudo);
         p.SecaoAtual = p.Secoes[2];
         Assert.Same(p.Processamento, p.SecaoAtual.Conteudo);
@@ -293,4 +293,9 @@ internal static class Repositorio
     });
 
     public static string Caminho(params string[] partes) => Path.Combine([Dados.Value, .. partes]);
+
+    /// <summary>Base de um caso de dotnet/tests/Luna.Integration.Tests/dados ("tests/dados/..." = tests/dados).</summary>
+    public static string Base(string base_) => base_.StartsWith("tests/dados/", StringComparison.Ordinal)
+        ? Caminho(base_["tests/dados/".Length..].Split('/'))
+        : Path.Combine([Dados.Value, "..", "..", "dotnet", "tests", "Luna.Integration.Tests", "dados", .. base_.Split('/')]);
 }

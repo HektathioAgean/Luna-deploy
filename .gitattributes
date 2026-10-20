@@ -26,3 +26,6 @@ dotnet/tests/Luna.Integration.Tests/dados/progresso/*.json -text
 dotnet/tests/Luna.Integration.Tests/dados/painel/*.xlsx binary
 dotnet/tests/Luna.Integration.Tests/dados/painel/*.csv -text
 dotnet/tests/Luna.Integration.Tests/dados/painel/*.json -text
+
+# Texto de referência das células da seção Resultados (PR13).
+dotnet/tests/Luna.Apresentacao.Tests/dados/resultados/*.json -text

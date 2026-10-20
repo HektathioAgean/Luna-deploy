@@ -10,11 +10,11 @@ substituição ser aprovada.
 | `src/Luna.Domain` | regras e funções matemáticas puras | nenhuma (só BCL) |
 | `src/Luna.Application` | caso de uso `ProcessarBase`, `ParametrosProcessamento`, porta `ILeitorDeBase`, `SaidasExportacao` (as 8 tabelas da exportação), `PaineisDeCliente` (painel do cliente) | Domain |
 | `src/Luna.Infrastructure` | `CarregadorDeArquivo`, leitura de CSV e de XLSX/XLSM, `Exportador` (gravação em Excel e ZIP/CSV) | Application, DocumentFormat.OpenXml 3.5.1 (MIT) |
-| `src/Luna.Apresentacao` | ViewModels da interface (MVVM), sem WPF: Base, Validação, Processamento, mensagens de erro | Application, CommunityToolkit.Mvvm 8.4.2 (MIT) |
+| `src/Luna.Apresentacao` | ViewModels da interface (MVVM), sem WPF: Base, Validação, Processamento, Resultados (linhas virtuais, texto da célula), Exportação, mensagens de erro | Application, CommunityToolkit.Mvvm 8.4.2 (MIT) |
 | `src/Luna.Desktop` | aplicativo Windows: WPF .NET 10, tema Fluent do sistema, navegação lateral | Apresentacao, Infrastructure |
 | `tests/Luna.Domain.Tests` | testes de unidade e paridade com o contrato | xUnit |
 | `tests/Luna.Integration.Tests` | leitura de arquivo e fluxo ponta a ponta contra o Python | xUnit |
-| `tests/Luna.Apresentacao.Tests` | ViewModels sem WPF: estados, progresso, cancelamento, erros | xUnit |
+| `tests/Luna.Apresentacao.Tests` | ViewModels sem WPF: estados, progresso, cancelamento, erros, linhas virtuais, texto das células contra o Python, gravação real | xUnit |
 
 ## Estado
 
@@ -344,7 +344,7 @@ SDK fixado em `global.json` (10.0.401, aceita feature bands mais novas).
 
 ```powershell
 dotnet test dotnet/Luna.sln
-dotnet run --project dotnet/src/Luna.Desktop        # aplicativo Windows (PR12)
+dotnet run --project dotnet/src/Luna.Desktop        # aplicativo Windows (PR12–PR13)
 ```
 
 ### Luna.Desktop (PR12, esqueleto)
@@ -367,9 +367,104 @@ no Windows. Avisos de progresso não vazam para a execução seguinte: o aviso
 (`Dispatcher.InvokeAsync`) e a continuação do `await` vão para a mesma fila,
 na mesma prioridade, e o comando só aceita outra execução depois do fim.
 
-Sem navegador, servidor, Python nem administrador. Ainda não: Resultados,
-Exportação e Painel do Cliente na tela (PR13/PR14), publicação portátil
-(PR15). O Luna Python continua independente.
+Sem navegador, servidor, Python nem administrador. Ainda não: Painel do
+Cliente na tela (PR14), publicação portátil (PR15). O Luna Python continua
+independente.
+
+### Resultados e Exportação (PR13, fecha o MVP)
+
+**Resultados:** uma aba por saída de `ResultadoProcessamento.Saidas`, na
+ordem do motor (Base Bruta, Base Validada, Base Detalhada, Inconsistências,
+Expurgados, Anomalias, Medianas Cliente, Janelas Atendimento), com a
+quantidade em pt-BR e a nota da tela web; Janelas só com o cálculo ligado.
+O `DataGrid` virtualiza linhas e colunas (`Recycling`), sem ordenação nem
+filtro. A fonte é `LinhasVirtuais` (`IList` somente leitura): `Count` vem da
+quantidade, cada linha é montada (`TabelaSaida.Linha` + `FormatoCelula`) só
+quando a grade a pede, com memória das últimas 256, e `IndexOf` devolve a
+posição guardada na linha, sem percorrer a lista. As colunas são geradas por
+um comportamento anexado (`ColunasDaTabela`), que troca colunas e fonte juntas.
+
+Texto da célula = o da tela web: `_valor_json` (luna.py) + `celula()`
+(interface/tabela.js). Data `yyyy-MM-dd HH:mm:ss` (com fuso, a hora local do
+fuso); nulo, NaN e infinito vazios; número pelo `Number` do JavaScript
+(não inteiro com 2 casas pelo `Math.round`, inteiro acima de 2⁵³
+arredondado, expoente a partir de 10²¹); data, hora e duração em coluna
+object pelo `str()` do Python; `true`/`false`. Referência:
+`dotnet/tests/Luna.Apresentacao.Tests/dados/resultados/` (`gerar_resultados.py`
+→ `esperado.json`: 17 casos de `gerar_saidas.py`, cada célula das 8 saídas,
+e 31 números de borda). A reescrita em Python do `celula()` foi conferida
+contra o JavaScript no Node (9.148 valores, 0 diferenças; fora do repo).
+
+**Exportação:** pasta digitada ou escolhida (`OpenFolderDialog`, abre na
+pasta da base), alvo `{base}_luna_resultado.xlsx|zip` mostrado antes de
+gravar, Excel ou ZIP fora do thread da interface, progresso por etapa
+(conferência do Excel, aba k/8 com nome e linhas, publicação), cancelamento,
+"O que vai no arquivo" com as 8 contagens. Arquivo existente: pergunta antes
+(`MessageBox`, padrão Não); recusada, nada é tocado; confirmada, a publicação
+atômica do `Exportador` troca o arquivo só no fim. A pergunta só aparece
+quando o arquivo existe. `Luna.Apresentacao` não referencia a
+Infrastructure: a gravação é o delegate `ExecutorDeExportacao`, com
+`PassoDeGravacao` e `GravacaoRecusadaException`; a composição
+(`ExportacaoDoMotor`, Luna.Desktop) liga ao `Exportador` e converte o aviso
+e a recusa do motor. Erros por `MensagemDeErro.ParaExportacao` (gravar, não
+ler; sem pilha; "o arquivo anterior não foi alterado").
+
+**Barra global:** segunda linha, a da exportação: estado, passo, Cancelar e
+erro, visível de qualquer seção enquanto houver gravação em curso ou
+terminada para o resultado atual.
+
+**Exclusão:** durante a gravação, `BaseViewModel.Bloqueado` (ligado pelo
+`PrincipalViewModel`) desabilita Processar e o próprio método recusa a
+execução (o `Execute` do comando não confere `CanExecute`). Processar começa
+soltando o resultado, e sem resultado a gravação recusa, também no método.
+Duas gravações ao mesmo tempo não acontecem (comando + guarda). Processar de
+novo descarta Resultados e o estado da exportação. Um aviso de progresso só
+vale para a gravação que o emitiu (contador de execução). As 8 saídas são
+montadas na composição, dentro do `Task.Run` do processamento, fora do thread
+da interface.
+
+**Virtualização medida (20/10/2026)** no `Luna.Desktop` real, por um
+programa fora do repo (`luna-fuzz-harness/desktop/virtualizacao`): por aba,
+página a página (até 400 passos), 100 saltos aleatórios, fim, direita,
+começo; contador de `TabelaSaida.Linha`, linhas/células realizadas, tempo
+por passo, alocação e heap depois de GC completo.
+
+| Base | Aba (linhas × colunas) | Linhas montadas | Passo mediana / p95 / máx | Heap antes → depois |
+|---|---|---|---|---|
+| 300 mil (XLSX) | Base Bruta 300.000 × 6 | 15 ao abrir + 6.419 em 504 passos | 18 / 26 / 32 ms | 143,4 → 143,4 MB |
+| 300 mil (XLSX) | Base Detalhada 239.750 × 28 | 14 + 6.418 | 18 / 25 / 64 ms | 145,2 → 138,6 MB |
+| real (133.133 × 45) | Base Bruta 133.133 × 45 | 15 + 6.426 | 21 / 33 / 53 ms | 235,2 → 235,7 MB |
+| real | Base Detalhada 70.862 × 67 | 14 + 6.406 | 15 / 21 / 65 ms | 232,7 → 233,2 MB |
+
+- Só as linhas visíveis são montadas (~13 por página); nenhuma aba é
+  percorrida inteira. Linhas realizadas: 12–14; células realizadas com a
+  grade rolada até a direita: 91–156 (colunas visíveis, não as 45–67).
+- O heap não cresce com a rolagem (as 8 abas de cada base, até ±0,5 MB, e
+  GC devolvendo até 7 MB). Pico do processo, com as duas gravações: 431 MB (300 mil), 492 MB (real).
+- A rolagem aloca 1,6–3 MB por passo de curta duração, quase tudo do WPF
+  (linhas recicladas, layout, texto); a formatação das ~13 linhas novas é da
+  ordem de dezenas de KB.
+- Gravação pela `ExportacaoViewModel` no app real (mesma composição do
+  `App`): ZIP 3,1 s e Excel 11,4 s (300 mil); ZIP 4,4 s e Excel 13,6 s
+  (real). Conteúdo igual ao `exportar()` do Python nas 3 bases (TESTE_data,
+  300 mil, real), em Excel e ZIP: 6/6 pelo `comparar_exportacao.py` do
+  harness (cada célula do Excel pelo openpyxl; bytes de cada CSV), nenhum
+  temporário sobrando.
+
+**Roteiro de UI** (`luna-fuzz-harness/desktop/smoke.ps1`, fora do repo): 35
+passos, 35/35 com `-Tema claro` e com `-Tema escuro`. Os 22 do PR12 e mais:
+abas na ordem com as quantidades; `RowCount` da grade = quantidade em cada
+aba; alvo mostrado antes de gravar; ZIP e Excel da base sintética; contraste
+do estado da exportação (12,4:1 claro, 14,0:1 escuro); arquivo existente →
+"Não" deixa o arquivo intacto, "Sim" troca; reprocessar esconde a linha da
+exportação; Base Bruta de 300 mil linhas rolada a 10–100 % e de volta com
+cada passo de UI Automation respondido em 109–167 ms e a última linha
+realizada; memória privada +3 MB / −1 MB na rolagem; Excel de 300 mil
+linhas visto da seção Base (passo "Aba 2/8", Processar desabilitado),
+cancelado de lá: arquivo anterior intacto e nenhum `.parcial`; ZIP de 300
+mil linhas até o fim (2,8 s). Os botões do `MessageBox` aparecem para a UI
+Automation como `Pane` sem `Invoke`: o roteiro responde com `WM_COMMAND`
+(IDYES/IDNO) na caixa, sem mouse nem foco.
 
 Os testes acham `tests/dados/contrato/` subindo a partir da pasta de saída e
 conferem o SHA-256 de cada arquivo contra o `MANIFEST.json`.
