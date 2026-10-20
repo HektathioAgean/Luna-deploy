@@ -7,7 +7,7 @@ Estado em 19/10/2026.
 | Item | Situação |
 |---|---|
 | `main` | até o PR7: leitura de XLSX/CSV com menos memória e alocação (`9ccd183`) |
-| PR8 — `pr8-saidas-exportacao` | preparação das 8 saídas da exportação, **aberto para revisão** |
+| PR #27 — `pr8-saidas-exportacao` | preparação das 8 saídas da exportação (PR8), **aberto para revisão** |
 | PR #26 — `pr7-memoria-leitura` | otimização da leitura (PR7), **mergeado** em 19/10 (`9ccd183`) |
 | PR #24 — `pr6c-csv-cr-sem-laco` | correções do CSV (laço com CR, ponto do fuso), **mergeado** (`a2e15c2`) |
 | PR #23 — `pr6b-leitura-xlsx` | leitura de XLSX/XLSM com DocumentFormat.OpenXml 3.5.1, **mergeado** (`b14bc18`) |
@@ -18,7 +18,7 @@ Estado em 19/10/2026.
 Próximos passos combinados: gravação da exportação (Excel/ZIP, PR9, a
 planejar depois da aprovação do PR8) e, por último, a interface WPF.
 
-## Saídas da exportação (PR8, branch `pr8-saidas-exportacao`, 19/10/2026)
+## Saídas da exportação (PR8, PR #27, 19/10/2026)
 
 - `SaidasExportacao` monta as 8 tabelas de `SAIDAS` como visões sobre a
   `TabelaBruta` e os registros classificados (sem cópia), no primeiro acesso a
