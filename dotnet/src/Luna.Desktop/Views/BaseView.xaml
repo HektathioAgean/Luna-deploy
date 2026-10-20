@@ -1,11 +1,6 @@
 <UserControl x:Class="Luna.Desktop.Views.BaseView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="*" />
-      <RowDefinition Height="Auto" />
-    </Grid.RowDefinitions>
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="36,28" MaxWidth="1000" HorizontalAlignment="Left">
       <TextBlock Text="Base" Style="{StaticResource Titulo}" />
@@ -96,48 +91,4 @@
 
     </StackPanel>
   </ScrollViewer>
-  <!-- Ação, estado e progresso: barra fixa, sempre visível. -->
-  <Border Grid.Row="1" Padding="36,14,36,16" BorderThickness="0,1,0,0"
-          BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
-      <StackPanel>
-        <StackPanel Orientation="Horizontal">
-          <Button Content="Processar base" MinWidth="150" Command="{Binding ProcessarCommand}"
-                  Background="{StaticResource LunaExecutar}" Foreground="White"
-                  AutomationProperties.AutomationId="BotaoProcessar" />
-          <Button Content="Cancelar" MinWidth="110" Margin="8,0,0,0" Command="{Binding ProcessarCancelCommand}"
-                  Visibility="{Binding EmExecucao, Converter={StaticResource Visivel}}"
-                  AutomationProperties.AutomationId="BotaoCancelar" />
-          <TextBlock Text="{Binding TextoEstado}" Margin="16,0,0,0" VerticalAlignment="Center"
-                     AutomationProperties.AutomationId="TextoEstado" />
-        </StackPanel>
-        <ProgressBar IsIndeterminate="True" Height="4" Margin="0,14,0,0"
-                     Visibility="{Binding EmExecucao, Converter={StaticResource Visivel}}" />
-        <ItemsControl ItemsSource="{Binding Estagios}" Margin="0,14,0,0" Focusable="False">
-          <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate>
-              <WrapPanel />
-            </ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <Border x:Name="Fundo" Style="{StaticResource Etiqueta}">
-                <TextBlock x:Name="Texto" Text="{Binding Rotulo}" Opacity="0.55" />
-              </Border>
-              <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding Iniciado}" Value="True">
-                  <Setter TargetName="Fundo" Property="BorderBrush" Value="{StaticResource LunaAcento}" />
-                  <Setter TargetName="Texto" Property="Opacity" Value="1" />
-                </DataTrigger>
-              </DataTemplate.Triggers>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <Border BorderBrush="{StaticResource LunaErro}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,8,0,0"
-                Visibility="{Binding MensagemDeErro, Converter={StaticResource TemTexto}}">
-          <TextBlock Text="{Binding MensagemDeErro}" TextWrapping="Wrap" Foreground="{StaticResource LunaErro}"
-                     AutomationProperties.AutomationId="TextoErro" />
-        </Border>
-      </StackPanel>
-    </Border>
-  </Grid>
 </UserControl>

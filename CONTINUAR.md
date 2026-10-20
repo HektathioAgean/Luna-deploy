@@ -36,7 +36,13 @@ cancelamento, sem UI), PR11 (painel do cliente em Application), depois a UI.
 - Teste de UI fora do repo: `luna-fuzz-harness/desktop/smoke.ps1` (UI
   Automation, capturas com PrintWindow, sem roubar o foco; o arquivo precisa
   de BOM para o PowerShell 5.1): abertura, navegação, processamento, erros,
-  cancelamento, diálogo e fechamento.
+  cancelamento, diálogo e fechamento. `-Tema claro|escuro` passa `--tema=`
+  ao app; 22 passos, com barra nas 3 seções, processar/cancelar de outra
+  aba, estágios por `ItemStatus`, nenhum aviso depois do cancelamento,
+  reprocessar logo após cancelar e contraste ≥ 4,5:1 medido na captura.
+- Revisão final: barra de ação na `MainWindow` (todas as seções), cores de
+  estado do Fluent (o vermelho fixo dava ~2,4:1 no escuro), texto da lateral
+  fixo (no claro o item selecionado dava 1,36:1). ViewModels sem mudança.
 
 ## Painel do cliente (PR11, PR #31, mergeado em 20/10/2026)
 

@@ -37,7 +37,7 @@
         <Border Style="{StaticResource Cartao}">
           <StackPanel>
             <TextBlock Text="KPIs" Style="{StaticResource TituloSecao}" />
-            <TextBlock Text="Estrutura inválida: sem KPIs. Veja a seção Validação." Foreground="{StaticResource LunaErro}"
+            <TextBlock Text="Estrutura inválida: sem KPIs. Veja a seção Validação." Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                        Visibility="{Binding TemKpis, Converter={StaticResource TemTexto}, ConverterParameter=inverso}" />
             <ItemsControl ItemsSource="{Binding Kpis}" AutomationProperties.AutomationId="ListaKpis">
               <ItemsControl.ItemsPanel>

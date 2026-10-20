@@ -20,6 +20,11 @@ public delegate ResultadoProcessamento ExecutorDeProcessamento(
     ParametrosProcessamento parametros, IProgress<EstagioProcessamento> progresso, CancellationToken cancelamento);
 
 /// <summary>Leva cada aviso de progresso ao thread da interface, na ordem.</summary>
+/// <remarks>
+/// Nenhum aviso chega a uma execução seguinte: o executor avisa antes de terminar, e no WPF o aviso
+/// (Dispatcher.InvokeAsync) e a continuação do await vão para a mesma fila, na mesma prioridade (FIFO).
+/// Os avisos pendentes rodam antes do fim da execução, e o comando só aceita outra depois dele.
+/// </remarks>
 internal sealed class ProgressoNaInterface<T>(IDespachante despachante, Action<T> aoAvisar) : IProgress<T>
 {
     public void Report(T value) => despachante.Executar(() => aoAvisar(value));

@@ -38,17 +38,17 @@
               <TextBlock.Style>
                 <Style TargetType="TextBlock">
                   <Setter Property="Text" Value="Estrutura válida para processamento." />
-                  <Setter Property="Foreground" Value="{StaticResource LunaSucesso}" />
+                  <Setter Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" />
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding Valido}" Value="False">
                       <Setter Property="Text" Value="Estrutura inválida: faltam colunas obrigatórias." />
-                      <Setter Property="Foreground" Value="{StaticResource LunaErro}" />
+                      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
                     </DataTrigger>
                   </Style.Triggers>
                 </Style>
               </TextBlock.Style>
             </TextBlock>
-            <TextBlock Text="{Binding AvisoDeDuplicadas}" Foreground="{StaticResource LunaAtencao}" TextWrapping="Wrap" Margin="0,8,0,0"
+            <TextBlock Text="{Binding AvisoDeDuplicadas}" Foreground="{DynamicResource SystemFillColorCautionBrush}" TextWrapping="Wrap" Margin="0,8,0,0"
                        Visibility="{Binding AvisoDeDuplicadas, Converter={StaticResource TemTexto}}" />
           </StackPanel>
         </Border>
@@ -93,7 +93,7 @@
             <ItemsControl ItemsSource="{Binding AvisosDeLeitura}" AutomationProperties.AutomationId="ListaAvisos">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <TextBlock Text="{Binding}" Foreground="{StaticResource LunaAtencao}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                  <TextBlock Text="{Binding}" Foreground="{DynamicResource SystemFillColorCautionBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>

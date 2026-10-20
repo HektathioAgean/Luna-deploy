@@ -14,6 +14,12 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
         DispatcherUnhandledException += AoFalharNaInterface;
+        // --tema=claro|escuro força o tema só neste processo (testes visuais); sem ele, segue o Windows.
+        // WPF0001: a API de ThemeMode em código ainda é marcada como avaliação no .NET 10.
+#pragma warning disable WPF0001
+        if (e.Args.Contains("--tema=claro")) ThemeMode = ThemeMode.Light;
+        else if (e.Args.Contains("--tema=escuro")) ThemeMode = ThemeMode.Dark;
+#pragma warning restore WPF0001
 
         var caso = new ProcessarBase(new CarregadorDeArquivo());
         var janela = new MainWindow();

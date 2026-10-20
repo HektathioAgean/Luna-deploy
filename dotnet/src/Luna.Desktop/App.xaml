@@ -6,16 +6,14 @@
              ShutdownMode="OnMainWindowClose">
   <Application.Resources>
     <ResourceDictionary>
-      <!-- Identidade do Luna (interface/app.css): dourado, barra lateral escura, azul de executar. -->
+      <!-- Identidade do Luna (interface/app.css): dourado, barra lateral escura, azul de executar.
+           Cores de estado (erro, sucesso, atenção) vêm do Fluent (SystemFillColor*Brush): acompanham o tema. -->
       <SolidColorBrush x:Key="LunaAcento" Color="#C0A24B" />
       <SolidColorBrush x:Key="LunaLateral" Color="#15191F" />
       <SolidColorBrush x:Key="LunaLateralBorda" Color="#2A3038" />
       <SolidColorBrush x:Key="LunaTextoNoEscuro" Color="#E8EAED" />
       <SolidColorBrush x:Key="LunaTextoNoEscuroApagado" Color="#9AA1AB" />
       <SolidColorBrush x:Key="LunaExecutar" Color="#1D6FE0" />
-      <SolidColorBrush x:Key="LunaSucesso" Color="#1A7F37" />
-      <SolidColorBrush x:Key="LunaAtencao" Color="#B45309" />
-      <SolidColorBrush x:Key="LunaErro" Color="#B91C1C" />
       <v:Negar x:Key="Negar" />
       <v:TemConteudo x:Key="TemTexto" />
       <BooleanToVisibilityConverter x:Key="Visivel" />
