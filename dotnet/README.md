@@ -8,7 +8,7 @@ substituição ser aprovada.
 | Projeto | Conteúdo | Dependências |
 |---|---|---|
 | `src/Luna.Domain` | regras e funções matemáticas puras | nenhuma (só BCL) |
-| `src/Luna.Application` | caso de uso `ProcessarBase`, `ParametrosProcessamento`, porta `ILeitorDeBase`, `SaidasExportacao` (as 8 tabelas da exportação) | Domain |
+| `src/Luna.Application` | caso de uso `ProcessarBase`, `ParametrosProcessamento`, porta `ILeitorDeBase`, `SaidasExportacao` (as 8 tabelas da exportação), `PaineisDeCliente` (painel do cliente) | Domain |
 | `src/Luna.Infrastructure` | `CarregadorDeArquivo`, leitura de CSV e de XLSX/XLSM, `Exportador` (gravação em Excel e ZIP/CSV) | Application, DocumentFormat.OpenXml 3.5.1 (MIT) |
 | `tests/Luna.Domain.Tests` | testes de unidade e paridade com o contrato | xUnit |
 | `tests/Luna.Integration.Tests` | leitura de arquivo e fluxo ponta a ponta contra o Python | xUnit |
@@ -184,6 +184,37 @@ PR10 — progresso e cancelamento, para a interface (sem UI neste PR):
   padrão: implementações antigas continuam valendo.
 - Chamadas antigas (`Executar(parametros)`, `Exportar(r, formato, destino)`)
   não mudam, e o resultado é o mesmo com ou sem progresso/token.
+
+PR11 — painel do cliente, só Application (`PaineisDeCliente.Montar`,
+`ClientesDisponiveis`), como o `montar_painel_cliente` do Python:
+
+- seleção do cliente pelo código sem espaços nas pontas (zeros à esquerda
+  preservados: `00123` ≠ `123`), filtro por dia da semana (`TODOS` ou
+  SEG…DOM, sem diferença de maiúsculas; outro texto dá painel vazio);
+- `Vol_caixas` (primeira das colunas candidatas do motor; sem nenhuma, zero):
+  `normalizar_numero_texto` (o último separador decide a casa decimal) e as
+  contagens de nulos, zeros (inválido conta como zero, como no motor) e
+  inválidos; a média usa a soma pairwise do numpy (`Volumes.SomaNumpy`), igual
+  à do `Series.mean()`; `formatar_numero` com arredondamento exato do valor
+  binário (empate para o par) e ponto de milhar;
+- resumo recalculado no recorte com `TemposPorCliente` (mesmos parâmetros),
+  referências de mediana/Q1/gap, janela do cliente com
+  `JanelasDeAtendimento`, tabela com as duas linhas de resumo e os dados dos
+  dois gráficos (eixo, marcas, faixa inicial, volume, tempo, referências;
+  aberturas com a faixa da janela, dupla quando cruza a meia-noite);
+- ordem das entregas do cliente: o `sort_values("Chegou_em")` do pandas usa o
+  quicksort escalar do numpy em datetime64, que não é estável; o C# o
+  reproduz (`OrdenacaoNumpy.ArgsortQuicksort`), empates inclusive;
+- lê só as linhas do cliente na base (sem cópia da base): 12–17 ms e ~90 KB
+  alocados por painel na base de 300 mil linhas e na base real, pico +3 MB;
+  sem gráfico, ScottPlot ou WPF.
+
+Diferenças: (1) no gráfico de aberturas, entregas no mesmo minuto ficam na
+ordem do histórico do cliente. O Python ordena os minutos (float64) com o
+quicksort vetorizado do numpy, cuja ordem nos empates depende da CPU; x, y e
+rótulo são iguais, só o detalhe (data/hora e tempo) de pontos empatados pode
+trocar de lugar. (2) Coluna de volume só com booleanos (sem sentido como
+volume) vira 1/0 aqui; o pandas mantém True/False na tabela.
 
 ### Base real (20/10/2026)
 
