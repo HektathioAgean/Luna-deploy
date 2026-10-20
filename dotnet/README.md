@@ -175,8 +175,10 @@ PR10 — progresso e cancelamento, para a interface (sem UI neste PR):
   `IProgress<ProgressoExportacao>` com `Validacao` (só xlsx), uma `Gravacao`
   por saída (aba 1–8, nome da aba ou do CSV, linhas da tabela), `Publicacao`
   e `Concluido`. Nenhum percentual: cada aviso é um passo que começou de fato.
-- Cancelamento (`CancellationToken`): conferido antes de cada aviso, entre as
-  tentativas do CSV, a cada 1.024 linhas na leitura do Excel e na gravação.
+- Cancelamento (`CancellationToken`): conferido antes de cada aviso, a cada
+  bloco de 64 KB decodificado na leitura do CSV, a cada 1.024 linhas na
+  leitura do Excel, na busca de datas com fuso do Excel, no pré-passe de
+  formatação dos CSVs e na gravação.
   Cancelado, nada é devolvido nem publicado (o arquivo anterior fica).
   `ILeitorDeBase` ganhou `Carregar(caminho, cancelamento)` com implementação
   padrão: implementações antigas continuam valendo.

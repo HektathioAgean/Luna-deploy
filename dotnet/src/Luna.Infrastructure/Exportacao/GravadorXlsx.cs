@@ -54,7 +54,8 @@ internal static class GravadorXlsx
     /// removido em silêncio) e aba acima de 1.048.576 linhas ou 16.384 colunas.
     /// </summary>
     /// <exception cref="ExportacaoRecusadaException"/>
-    public static void Validar(IReadOnlyList<TabelaSaida> saidas)
+    /// <param name="cancelamento">Conferido a cada 1.024 linhas na busca de datas com fuso.</param>
+    public static void Validar(IReadOnlyList<TabelaSaida> saidas, CancellationToken cancelamento = default)
     {
         foreach (var tabela in saidas)
         {
@@ -78,8 +79,11 @@ internal static class GravadorXlsx
             var comFuso = Enumerable.Range(0, tabela.Colunas.Count).Where(j => tabela.Colunas[j].Fuso is not null).ToList();
             if (comFuso.Count == 0 || Vazia(tabela))
                 continue;
+            int n = 0;
             foreach (var linha in tabela.Linhas())
             {
+                if ((++n & 0x3FF) == 0)
+                    cancelamento.ThrowIfCancellationRequested();
                 foreach (int j in comFuso)
                 {
                     if (linha[j] is DateTimeOffset data)

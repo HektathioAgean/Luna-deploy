@@ -80,7 +80,7 @@ public static class Exportador
         if (formato == "xlsx")
         {
             Avisar(new ProgressoExportacao(EtapaExportacao.Validacao));
-            GravadorXlsx.Validar(saidas);
+            GravadorXlsx.Validar(saidas, cancelamento);
         }
         void AoIniciarAba(int k) => Avisar(new ProgressoExportacao(EtapaExportacao.Gravacao, k + 1, saidas.Count,
             formato == "xlsx" ? saidas[k].Aba : saidas[k].ArquivoCsv, saidas[k].Quantidade));

@@ -32,7 +32,9 @@ cancelamento, sem UI), PR11 (painel do cliente em Application), depois a UI.
   antigas e resultados iguais.
 - Referência no repo: `dotnet/tests/Luna.Integration.Tests/dados/progresso/`
   (`gerar_progresso.py` → `esperado.json`: estágios do Python por caso).
-- 11 mutantes, 11 detectados.
+- 15 mutantes, 15 detectados (4 deles dos ajustes da revisão: bloco do CSV,
+  laço do Excel, pré-passe do CSV, busca de fuso). Testes de cancelamento sem
+  temporizador: token já cancelado × interrupção no meio da leitura.
 
 ## Gravação da exportação (PR9, PR #28, mergeado em 20/10/2026)
 
@@ -161,7 +163,7 @@ Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.
 
 ```powershell
 .venv\Scripts\python -m pytest -q        # 98 passed
-dotnet test dotnet\Luna.sln              # 289 + 187 passed
+dotnet test dotnet\Luna.sln              # 289 + 191 passed
 ```
 
 O contrato só vale com as versões travadas (`tests/test_contrato.py` falha

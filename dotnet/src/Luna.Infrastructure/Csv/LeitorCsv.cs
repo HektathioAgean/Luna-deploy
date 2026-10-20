@@ -41,13 +41,11 @@ public static class LeitorCsv
 
         foreach (var (separador, encoding) in Tentativas)
         {
-            // Cada tentativa lê o arquivo todo (0,2 s em 300 mil linhas): confere entre elas.
-            cancelamento.ThrowIfCancellationRequested();
             TabelaBruta tabela;
             try
             {
                 var (codificacao, inicio) = Validar(bytes, encoding);
-                tabela = Montar(TokenizadorCsv.Tokenizar(bytes, inicio, codificacao, separador));
+                tabela = Montar(TokenizadorCsv.Tokenizar(bytes, inicio, codificacao, separador, cancelamento: cancelamento));
             }
             catch (Exception e) when (e is ErroDeTokenizacaoException or DecoderFallbackException or ErroDeDecodificacaoException)
             {

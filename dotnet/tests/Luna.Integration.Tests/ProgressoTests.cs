@@ -158,7 +158,7 @@ public sealed class ProgressoTests : IDisposable
     [Theory]
     [InlineData("csv")]
     [InlineData("xlsx")]
-    public void Leitores_conferem_o_token_dentro_da_leitura(string formato)
+    public void Leitores_com_token_ja_cancelado_nao_leem(string formato)
     {
         string caminho = Base(3000);
         if (formato == "xlsx")
@@ -168,13 +168,125 @@ public sealed class ProgressoTests : IDisposable
         }
         using var fonte = new CancellationTokenSource();
         fonte.Cancel();
-        // Direto no leitor: a conferência é no laço de tentativas (CSV) e no de linhas (Excel).
+        // Direto no leitor: para na primeira conferência, antes do primeiro bloco (CSV) ou da primeira linha (Excel).
         var e = Assert.ThrowsAny<OperationCanceledException>(() => formato == "csv"
             ? Luna.Infrastructure.Csv.LeitorCsv.Ler(caminho, fonte.Token)
             : Luna.Infrastructure.Xlsx.LeitorXlsx.Ler(caminho, fonte.Token));
-        Assert.Contains(formato == "csv" ? "LeitorCsv.Ler" : "LeitorXlsx.LerTabela", e.StackTrace);
+        Assert.Contains(formato == "csv" ? "TokenizadorCsv.Tokenizar" : "LeitorXlsx.LerTabela", e.StackTrace);
         // Sem cancelamento, o mesmo arquivo é lido inteiro.
         Assert.Equal(3000, new CarregadorDeArquivo().Carregar(caminho, default).Linhas.Count);
+    }
+
+    [Fact]
+    public void Excel_interrompido_no_meio_da_leitura()
+    {
+        // Cancela quando a linha de dados 1.500 é entregue; a próxima conferência
+        // (1.024 linhas depois da anterior, em 2.048) para a leitura antes do fim.
+        using var fonte = new CancellationTokenSource();
+        int entregues = 0;
+        IEnumerable<IReadOnlyList<Luna.Infrastructure.Xlsx.CelulaExcel>> Linhas()
+        {
+            for (int i = 0; i <= 3000; i++)
+            {
+                entregues++;
+                yield return i == 0
+                    ? [new("Cod_Cliente", null), new("Chegou_em", null), new("Finalizada_em", null)]
+                    : [new($"C{i}", null), new("2026-03-02 09:15:00", null), new("2026-03-02 09:35:00", null)];
+                if (i == 1500)
+                    fonte.Cancel();
+            }
+        }
+
+        Assert.ThrowsAny<OperationCanceledException>(() => Luna.Infrastructure.Xlsx.LeitorXlsx.LerTabela(Linhas(), fonte.Token));
+        Assert.Equal(1 + 2049, entregues);
+        entregues = 0;
+        Assert.Equal(3000, Luna.Infrastructure.Xlsx.LeitorXlsx.LerTabela(Linhas(), default).Linhas.Count);
+    }
+
+    [Fact]
+    public void Csv_interrompido_no_meio_da_leitura()
+    {
+        // O decodificador cancela depois do primeiro bloco: o segundo não é lido.
+        byte[] bytes = Encoding.UTF8.GetBytes(File.ReadAllText(Base(3000)));
+        using var fonte = new CancellationTokenSource();
+        var codificacao = new CodificacaoQueCancela(fonte);
+
+        Assert.ThrowsAny<OperationCanceledException>(() =>
+            Luna.Infrastructure.Csv.TokenizadorCsv.Tokenizar(bytes, 0, codificacao, ';', tamanhoDoBloco: 4096, cancelamento: fonte.Token));
+        Assert.Equal(1, codificacao.Blocos);
+        Assert.True(bytes.Length > 4 * 4096);
+    }
+
+    /// <summary>UTF-8 que cancela a fonte depois de decodificar cada bloco e conta os blocos.</summary>
+    private sealed class CodificacaoQueCancela(CancellationTokenSource fonte) : Encoding
+    {
+        private readonly Encoding _base = new UTF8Encoding(false);
+
+        public int Blocos { get; private set; }
+
+        public override int GetByteCount(char[] chars, int index, int count) => _base.GetByteCount(chars, index, count);
+        public override int GetBytes(char[] chars, int charIndex, int charCount, byte[] bytes, int byteIndex)
+            => _base.GetBytes(chars, charIndex, charCount, bytes, byteIndex);
+        public override int GetCharCount(byte[] bytes, int index, int count) => _base.GetCharCount(bytes, index, count);
+        public override int GetChars(byte[] bytes, int byteIndex, int byteCount, char[] chars, int charIndex)
+            => _base.GetChars(bytes, byteIndex, byteCount, chars, charIndex);
+        public override int GetMaxByteCount(int charCount) => _base.GetMaxByteCount(charCount);
+        public override int GetMaxCharCount(int byteCount) => _base.GetMaxCharCount(byteCount);
+        public override Decoder GetDecoder() => new Decodificador(this, _base.GetDecoder());
+
+        private sealed class Decodificador(CodificacaoQueCancela dono, Decoder interno) : Decoder
+        {
+            public override int GetCharCount(byte[] bytes, int index, int count) => interno.GetCharCount(bytes, index, count);
+            public override int GetChars(byte[] bytes, int byteIndex, int byteCount, char[] chars, int charIndex)
+                => interno.GetChars(bytes, byteIndex, byteCount, chars, charIndex);
+
+            public override void Convert(byte[] bytes, int byteIndex, int byteCount, char[] chars, int charIndex, int charCount,
+                bool flush, out int bytesUsed, out int charsUsed, out bool completed)
+            {
+                dono.Blocos++;
+                interno.Convert(bytes, byteIndex, byteCount, chars, charIndex, charCount, flush, out bytesUsed, out charsUsed, out completed);
+                dono.fonte.Cancel();
+            }
+        }
+
+        private readonly CancellationTokenSource fonte = fonte;
+    }
+
+    [Fact]
+    public void Formatacao_do_csv_e_cancelavel()
+    {
+        // Base Validada tem colunas de data: o pré-passe da formatação percorre as 3.000 linhas.
+        var resultado = Caso.Executar(new ParametrosProcessamento(Base(3000)));
+        string alvo = Path.Combine(_pasta, "saida.zip");
+        File.WriteAllText(alvo, "anterior");
+        using var fonte = new CancellationTokenSource();
+        var avisos = new Avisos<ProgressoExportacao>(a =>
+        {
+            if (a is { Etapa: EtapaExportacao.Gravacao, Aba: 2 })
+                fonte.Cancel();
+        });
+
+        var e = Assert.ThrowsAny<OperationCanceledException>(() => Exportador.Exportar(resultado, "zip", alvo, fonte.Token, avisos));
+        Assert.Contains("GravadorZipCsv.Formatadores", e.StackTrace);
+        Assert.Equal("anterior", File.ReadAllText(alvo));
+        Assert.Empty(Directory.GetFiles(_pasta, "*.parcial"));
+    }
+
+    [Fact]
+    public void Busca_de_fuso_no_excel_e_cancelavel()
+    {
+        // Coluna com fuso vazia nas 2.000 primeiras linhas: a busca percorre a tabela.
+        var colunas = new[] { new ColunaSaida("Chegou_em", TipoColuna.DataHora, TimeSpan.FromHours(-3)) };
+        var data = new DateTimeOffset(2026, 3, 2, 9, 15, 0, TimeSpan.FromHours(-3));
+        var tabela = new TabelaSaida("Base Validada", "base_validada.csv", colunas, 2500, null,
+            i => [i < 2000 ? null : data]);
+
+        using var fonte = new CancellationTokenSource();
+        fonte.Cancel();
+        var e = Assert.ThrowsAny<OperationCanceledException>(() => GravadorXlsx.Validar([tabela], fonte.Token));
+        Assert.Contains("GravadorXlsx.Validar", e.StackTrace);
+        // Sem cancelamento, a mesma busca chega à data com fuso e recusa.
+        Assert.Throws<ExportacaoRecusadaException>(() => GravadorXlsx.Validar([tabela]));
     }
 
     [Theory]

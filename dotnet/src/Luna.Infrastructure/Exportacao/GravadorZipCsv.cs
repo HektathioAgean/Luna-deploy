@@ -36,7 +36,7 @@ internal static class GravadorZipCsv
     /// <summary>O texto do CSV de uma tabela (sem o BOM).</summary>
     internal static void Escrever(TabelaSaida tabela, TextWriter saida, CancellationToken cancelamento)
     {
-        var formatos = Formatadores(tabela);
+        var formatos = Formatadores(tabela, cancelamento);
         EscreverRegistro(saida, tabela.Colunas.Select(c => c.Nome).ToArray());
         var campos = new string[tabela.Colunas.Count];
         int n = 0;
@@ -82,7 +82,7 @@ internal static class GravadorZipCsv
     /// do pandas). datetime64 e timedelta64 dependem da coluna inteira, então
     /// essas colunas passam antes por uma leitura das linhas.
     /// </summary>
-    private static Func<object, string>[] Formatadores(TabelaSaida tabela)
+    private static Func<object, string>[] Formatadores(TabelaSaida tabela, CancellationToken cancelamento)
     {
         var colunas = tabela.Colunas;
         var datas = new EstadoDatas?[colunas.Count];
@@ -96,8 +96,11 @@ internal static class GravadorZipCsv
         }
         if (datas.Any(d => d is not null) || duracoes.Any(d => d is not null))
         {
+            int n = 0;
             foreach (var linha in tabela.Linhas())
             {
+                if ((++n & 0x3FF) == 0)
+                    cancelamento.ThrowIfCancellationRequested();
                 for (int j = 0; j < colunas.Count; j++)
                 {
                     if (linha[j] is DateTime data)

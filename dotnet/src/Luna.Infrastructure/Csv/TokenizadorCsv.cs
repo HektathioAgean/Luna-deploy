@@ -40,8 +40,9 @@ internal static class TokenizadorCsv
     /// Decodifica os bytes em blocos durante a leitura: o texto inteiro nunca
     /// fica em memória (quem chama já validou o encoding).
     /// </summary>
+    /// <param name="cancelamento">Conferido antes de decodificar cada bloco.</param>
     public static List<string[]> Tokenizar(byte[] bytes, int inicio, System.Text.Encoding codificacao, char separador,
-        int tamanhoDoBloco = TamanhoDoBloco)
+        int tamanhoDoBloco = TamanhoDoBloco, CancellationToken cancelamento = default)
     {
         var linhas = new List<string[]>();
         var campos = new List<string>();
@@ -84,6 +85,7 @@ internal static class TokenizadorCsv
         bool completo = false;
         while (!completo)
         {
+            cancelamento.ThrowIfCancellationRequested();
             int restante = bytes.Length - posicao;
             int aLer = Math.Min(restante, tamanhoDoBloco);
             decodificador.Convert(bytes, posicao, aLer, bloco, 0, bloco.Length, flush: aLer == restante,

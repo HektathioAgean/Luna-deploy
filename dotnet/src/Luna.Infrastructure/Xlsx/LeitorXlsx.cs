@@ -51,8 +51,12 @@ public static partial class LeitorXlsx
     }
 
     private static TabelaBruta LerTabela(string caminho, CancellationToken cancelamento)
+        => LerTabela(Linhas(caminho), cancelamento);
+
+    /// <summary>A tabela a partir das linhas da planilha; o token é conferido a cada 1.024 linhas.</summary>
+    internal static TabelaBruta LerTabela(IEnumerable<IReadOnlyList<CelulaExcel>> linhasDaPlanilha, CancellationToken cancelamento)
     {
-        using var linhas = Linhas(caminho).GetEnumerator();
+        using var linhas = linhasDaPlanilha.GetEnumerator();
         var primeira = linhas.MoveNext() ? linhas.Current : [];
         var cabecalho = primeira
             .Select((c, i) => c.Valor is null ? $"Unnamed: {i}" : TextoPython.Str(c.Valor))
