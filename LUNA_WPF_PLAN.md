@@ -84,8 +84,8 @@ do Python em `ProcessarBase` e progresso por aba no `Exportador`.
 | PR | Conteúdo | Validação |
 |---|---|---|
 | PR10 | progresso por estágio em `ProcessarBase` e no `Exportador`, cancelamento (mergeado, #30) | testes de ordem dos estágios contra o Python; cancelamento |
-| PR11 | painel do cliente em Application (§2), sem UI (em revisão) | paridade com `montar_painel_cliente` do Python (fixtures + fuzz) |
-| PR12 | `Luna.Desktop` esqueleto: janela, abas Base/Validação/Processamento, processar com progresso e cancelamento | ViewModels testados; fumaça manual |
+| PR11 | painel do cliente em Application (§2), sem UI (mergeado, #31) | paridade com `montar_painel_cliente` do Python (fixtures + fuzz) |
+| PR12 | `Luna.Desktop` esqueleto: janela, abas Base/Validação/Processamento, processar com progresso e cancelamento (em revisão) | ViewModels testados; fumaça manual |
 | PR13 | aba Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP | fumaça com a base real (133 mil linhas) |
 | — | protótipo ScottPlot 5 (§4.2), fora do produto | dois eixos, zoom, deslocamento, barras, dispersão, janela circular |
 | PR14 | Painel do Cliente com ScottPlot 5 (entrega seguinte) | comparação visual com a versão web |

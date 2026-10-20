@@ -6,8 +6,9 @@ Estado em 20/10/2026.
 
 | Item | Situação |
 |---|---|
-| `main` | até o PR10: progresso e cancelamento (`ca2256e`) |
-| PR #31 — `pr11-painel-cliente` | painel do cliente em Application (PR11), **aberto para revisão** |
+| `main` | até o PR11: painel do cliente em Application (`acc331d`) |
+| PR12 — `pr12-desktop-esqueleto` | `Luna.Desktop` (WPF): Base, Validação, Processamento, **aberto para revisão** |
+| PR #31 — `pr11-painel-cliente` | painel do cliente em Application (PR11), **mergeado** em 20/10 (`acc331d`) |
 | PR #30 — `pr10-progresso-cancelamento` | progresso por estágio e cancelamento (PR10), **mergeado** em 20/10 (`ca2256e`) |
 | PR #28 — `pr9-exportacao` | gravação da exportação em Excel e ZIP/CSV (PR9), **mergeado** em 20/10 (`def4393`) |
 | PR #27 — `pr8-saidas-exportacao` | preparação das 8 saídas da exportação (PR8), **mergeado** em 19/10 (`5f0b7e1`) |
@@ -24,7 +25,20 @@ Exportação; ScottPlot 5 depois de protótipo; CommunityToolkit.Mvvm;
 self-contained win-x64 portátil; Fluent). Ordem do §5: PR10 (progresso e
 cancelamento, sem UI), PR11 (painel do cliente em Application), depois a UI.
 
-## Painel do cliente (PR11, PR #31, 20/10/2026)
+## Luna.Desktop — esqueleto WPF (PR12, branch `pr12-desktop-esqueleto`, 20/10/2026)
+
+- Projetos novos: `Luna.Apresentacao` (ViewModels MVVM sem WPF,
+  CommunityToolkit.Mvvm 8.4.2), `Luna.Desktop` (WPF .NET 10, `ThemeMode="System"`,
+  navegação lateral) e `Luna.Apresentacao.Tests`. Rodar:
+  `dotnet run --project dotnet/src/Luna.Desktop`.
+- Abas Base, Validação e Processamento; processamento em `Task.Run` com o
+  progresso e o cancelamento do PR10; erro sem pilha; um resultado por vez.
+- Teste de UI fora do repo: `luna-fuzz-harness/desktop/smoke.ps1` (UI
+  Automation, capturas com PrintWindow, sem roubar o foco; o arquivo precisa
+  de BOM para o PowerShell 5.1): abertura, navegação, processamento, erros,
+  cancelamento, diálogo e fechamento.
+
+## Painel do cliente (PR11, PR #31, mergeado em 20/10/2026)
 
 - `PaineisDeCliente.Montar` e `ClientesDisponiveis` (Application): resumo,
   filtro por dia, volume, referências, janela, tabela e dados dos 2 gráficos,
@@ -181,7 +195,7 @@ Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.
 
 ```powershell
 .venv\Scripts\python -m pytest -q        # 98 passed
-dotnet test dotnet\Luna.sln              # 289 + 302 passed
+dotnet test dotnet\Luna.sln              # 289 + 302 + 16 passed
 ```
 
 O contrato só vale com as versões travadas (`tests/test_contrato.py` falha
