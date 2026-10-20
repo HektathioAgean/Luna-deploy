@@ -22,6 +22,17 @@ Exportação; ScottPlot 5 depois de protótipo; CommunityToolkit.Mvvm;
 self-contained win-x64 portátil; Fluent). Ordem do §5: PR10 (progresso e
 cancelamento, sem UI), PR11 (painel do cliente em Application), depois a UI.
 
+## Progresso e cancelamento (PR10, branch `pr10-progresso-cancelamento`, 20/10/2026)
+
+- `IProgress<EstagioProcessamento>` em `ProcessarBase.Executar` (estágios do
+  Python, sem `base_detalhada`) e `IProgress<ProgressoExportacao>` no
+  `Exportador` (validação, uma gravação por aba, publicação, concluído);
+  `CancellationToken` entre estágios, na leitura e na gravação. Chamadas
+  antigas e resultados iguais.
+- Referência no repo: `dotnet/tests/Luna.Integration.Tests/dados/progresso/`
+  (`gerar_progresso.py` → `esperado.json`: estágios do Python por caso).
+- 11 mutantes, 11 detectados.
+
 ## Gravação da exportação (PR9, PR #28, mergeado em 20/10/2026)
 
 - `Exportador.Exportar(resultado, "xlsx"|"zip", destino, cancelamento)`:
@@ -149,7 +160,7 @@ Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.
 
 ```powershell
 .venv\Scripts\python -m pytest -q        # 98 passed
-dotnet test dotnet\Luna.sln              # 289 + 171 passed
+dotnet test dotnet\Luna.sln              # 289 + 187 passed
 ```
 
 O contrato só vale com as versões travadas (`tests/test_contrato.py` falha
