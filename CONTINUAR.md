@@ -16,10 +16,11 @@ Estado em 20/10/2026.
 | Roteiros das fases | `LUNA_REVALIDACAO_POS_CORRECOES_PLAN.md`, `LUNA_MIGRACAO_CSHARP_FASE0_PLAN.md`, `LUNA_WPF_PLAN.md` |
 | Estado detalhado da migração | `dotnet/README.md` |
 
-Próximo passo: interface WPF, **só depois de o usuário decidir o escopo** em
-`LUNA_WPF_PLAN.md` (§4: MVP, biblioteca de gráficos, MVVM, publicação,
-visual). O plano propõe antes dois PRs sem UI: progresso por estágio e o
-painel do cliente em Application, com paridade contra o Python.
+Próximo passo: interface WPF com o escopo **aprovado em 20/10** em
+`LUNA_WPF_PLAN.md` (§4: MVP Base/Validação/Processamento/Resultados/
+Exportação; ScottPlot 5 depois de protótipo; CommunityToolkit.Mvvm;
+self-contained win-x64 portátil; Fluent). Ordem do §5: PR10 (progresso e
+cancelamento, sem UI), PR11 (painel do cliente em Application), depois a UI.
 
 ## Gravação da exportação (PR9, PR #28, mergeado em 20/10/2026)
 

@@ -1,7 +1,7 @@
 # Luna em WPF: planejamento (Fase 3)
 
-Estado: **planejamento, sem implementação**. Nada de `Luna.Desktop` antes de o
-escopo abaixo ser decidido pelo usuário. Base: Fase 3 do
+Estado: **escopo aprovado em 20/10/2026 (§4)**; implementação em PRs
+pequenos (§5), começando pelo PR10, sem UI. Base: Fase 3 do
 `LUNA_MIGRACAO_CSHARP_FASE0_PLAN.md` e a interface atual (`luna.py` +
 `interface/*.js`), com o motor C# validado até o PR9 (leitura, processamento,
 8 saídas e exportação iguais ao Python, inclusive numa base real de 133 mil
@@ -42,7 +42,7 @@ do Python em `ProcessarBase` e progresso por aba no `Exportador`.
 ## 3. Arquitetura proposta para `Luna.Desktop`
 
 - `dotnet/src/Luna.Desktop`: `net10.0-windows`, `UseWPF=true`, MVVM
-  (CommunityToolkit.Mvvm, MIT, ou MVVM à mão; a decidir). Referencia
+  (CommunityToolkit.Mvvm, MIT; §4). Referencia
   Application e Infrastructure; nenhuma regra no XAML nem no code-behind.
 - Processamento e exportação fora do thread da UI (`Task.Run`), com
   `IProgress<T>` e `CancellationToken`; botão Cancelar; estado
@@ -57,22 +57,27 @@ do Python em `ProcessarBase` e progresso por aba no `Exportador`.
 - Testes: ViewModels testáveis sem UI (xUnit); teste manual de fumaça descrito
   em cada PR.
 
-## 4. Decisões de escopo para o usuário (antes de qualquer código)
+## 4. Decisões de escopo (aprovadas na revisão do PR #29, 20/10/2026)
 
-1. **MVP:** que abas entram na primeira entrega e em que ordem? Proposta:
-   Base + Validação + Processamento + Exportação primeiro (tudo já existe em
-   C#); Resultados em seguida; Painel do Cliente por último (depende do §2).
-2. **Gráficos:** biblioteca com licença compatível (candidatas: ScottPlot,
-   OxyPlot, LiveCharts2; avaliar licença, desempenho com milhares de pontos e
-   interação de zoom/arraste como o Plotly atual).
-3. **MVVM:** CommunityToolkit.Mvvm ou implementação própria mínima.
-4. **Publicação (Fase 4):** framework-dependent × self-contained; instalador;
-   medir tamanho, abertura e memória numa máquina limpa.
-5. **Convivência:** o Luna Python (porta 8791, beta em `D:\Documentos\Projetos\Luna-beta`)
-   continua em uso até a substituição ser aprovada; o WPF não lê nem grava
-   nada do Python.
-6. **Visual:** manter a identidade da versão web (ícones de linha, abas
-   laterais) ou o padrão do Windows (Fluent do WPF no .NET 9+)?
+1. **MVP:** Base, Validação, Processamento, Resultados e Exportação. O Painel
+   do Cliente vem na entrega seguinte. Nenhuma funcionalidade da versão atual
+   é retirada: o que não está no MVP continua no Luna Python até chegar ao WPF.
+2. **Gráficos:** ScottPlot 5 para WPF (licença MIT). Antes do PR14, um
+   protótipo valida: dois eixos Y, zoom, deslocamento, barras, dispersão e a
+   faixa da janela circular (inclusive a que cruza a meia-noite). Nenhuma
+   dependência gráfica entra antes disso.
+3. **Arquitetura:** WPF .NET 10 com CommunityToolkit.Mvvm; XAML só para
+   apresentação; regras de negócio em Domain/Application, fora da UI.
+4. **Publicação:** self-contained win-x64, primeiro portátil em pasta/ZIP:
+   sem Python, sem servidor local, sem administrador. Instalador por usuário
+   numa etapa posterior.
+5. **Convivência:** o aplicativo Python (porta 8791, beta em
+   `D:\Documentos\Projetos\Luna-beta`) continua independente até a
+   homologação e a aprovação da substituição; o WPF não lê nem grava nada do
+   Python.
+6. **Visual:** tema Fluent nativo do WPF, seguindo o tema do sistema
+   (claro/escuro), com a identidade do Luna; navegação lateral e interface
+   objetiva.
 
 ## 5. Fatiamento sugerido (PRs pequenos)
 
@@ -81,9 +86,10 @@ do Python em `ProcessarBase` e progresso por aba no `Exportador`.
 | PR10 | progresso por estágio em `ProcessarBase` e no `Exportador` | testes de ordem dos estágios; cancelamento |
 | PR11 | painel do cliente em Application (§2), sem UI | paridade com `montar_painel_cliente` do Python (fixtures + fuzz) |
 | PR12 | `Luna.Desktop` esqueleto: janela, abas Base/Validação/Processamento, processar com progresso e cancelamento | ViewModels testados; fumaça manual |
-| PR13 | aba Resultados (8 tabelas virtualizadas) e Exportação | fumaça com a base real (133 mil linhas) |
-| PR14 | Painel do Cliente com os gráficos escolhidos | comparação visual com a versão web |
-| PR15 | publicação/instalador (Fase 4) | máquina limpa |
+| PR13 | aba Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP | fumaça com a base real (133 mil linhas) |
+| — | protótipo ScottPlot 5 (§4.2), fora do produto | dois eixos, zoom, deslocamento, barras, dispersão, janela circular |
+| PR14 | Painel do Cliente com ScottPlot 5 (entrega seguinte) | comparação visual com a versão web |
+| PR15 | publicação self-contained win-x64 portátil; instalador por usuário depois | máquina limpa, sem admin |
 
 Cada PR: aberto para revisão, sem merge automático; Python, contrato e
 matemática intocados.
