@@ -60,12 +60,27 @@ public sealed record PassoDeGravacao(EtapaDeGravacao Etapa, int Aba = 0, int Tot
 public sealed class GravacaoRecusadaException(string mensagem, Exception? causa = null) : Exception(mensagem, causa);
 
 /// <summary>
+/// Sem autorização para substituir, o arquivo apareceu durante a gravação (no motor,
+/// AlvoCriadoDuranteExportacaoException). Ele fica como está; nada foi publicado.
+/// </summary>
+public sealed class ArquivoCriadoDuranteGravacaoException(string caminho, Exception? causa = null)
+    : IOException($"O arquivo foi criado durante a gravação: {caminho}", causa)
+{
+    public string Caminho { get; } = caminho;
+}
+
+/// <summary>
 /// A gravação das 8 saídas em <paramref name="alvo"/> (na composição, o Exportador do motor).
 /// Grava num temporário e só substitui o alvo no fim; em erro ou cancelamento o arquivo anterior fica como estava.
 /// </summary>
 /// <param name="formato"><c>xlsx</c> ou <c>zip</c>.</param>
+/// <param name="substituir">
+/// Verdadeiro só com a substituição confirmada. Falso: se o alvo surgir durante a gravação,
+/// ele não é trocado (<see cref="ArquivoCriadoDuranteGravacaoException"/>).
+/// </param>
 /// <returns>O caminho gravado.</returns>
 /// <exception cref="GravacaoRecusadaException">O Excel não comporta o conteúdo.</exception>
+/// <exception cref="ArquivoCriadoDuranteGravacaoException">Sem <paramref name="substituir"/>, o alvo apareceu.</exception>
 public delegate string ExecutorDeExportacao(
-    ResultadoProcessamento resultado, string formato, string alvo, IProgress<PassoDeGravacao> progresso,
+    ResultadoProcessamento resultado, string formato, string alvo, bool substituir, IProgress<PassoDeGravacao> progresso,
     CancellationToken cancelamento);

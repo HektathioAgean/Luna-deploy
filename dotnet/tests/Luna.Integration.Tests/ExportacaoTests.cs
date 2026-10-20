@@ -182,6 +182,48 @@ public sealed class ExportacaoTests : IDisposable
         Assert.Empty(Directory.GetFiles(_pasta, "*.parcial"));
     }
 
+    [Theory]
+    [InlineData("xlsx")]
+    [InlineData("zip")]
+    public void Sem_substituir_o_alvo_criado_durante_a_gravacao_fica_como_esta(string formato)
+    {
+        string alvo = Path.Combine(_pasta, $"saida.{formato}");
+        // Outra instância cria o alvo depois da gravação e antes da publicação (o aviso sai antes do File.Move).
+        var avisos = new Progresso(a =>
+        {
+            if (a.Etapa == EtapaExportacao.Publicacao)
+                File.WriteAllText(alvo, "outra instância");
+        });
+
+        var e = Assert.Throws<AlvoCriadoDuranteExportacaoException>(
+            () => Exportador.Exportar(Teste(), formato, alvo, default, avisos, substituir: false));
+        Assert.Equal(alvo, e.Alvo);
+        Assert.IsAssignableFrom<IOException>(e.InnerException);
+        Assert.Equal("outra instância", File.ReadAllText(alvo));
+        Assert.Equal([alvo], Directory.GetFiles(_pasta));
+    }
+
+    [Theory]
+    [InlineData("xlsx")]
+    [InlineData("zip")]
+    public void Substituir_por_padrao_e_sem_substituir_com_alvo_ausente_publicam(string formato)
+    {
+        string alvo = Path.Combine(_pasta, $"saida.{formato}");
+        Assert.Equal(alvo, Exportador.Exportar(Teste(), formato, alvo, substituir: false));
+        Assert.NotEqual(0, new FileInfo(alvo).Length);
+
+        // Padrão (demais chamadores do motor): substitui o que existe, como o os.replace.
+        File.WriteAllText(alvo, "anterior");
+        Assert.Equal(alvo, Exportador.Exportar(Teste(), formato, alvo));
+        Assert.NotEqual("anterior", File.ReadAllText(alvo));
+
+        // Sem substituir e com o alvo já presente: recusa sem tocar.
+        File.WriteAllText(alvo, "anterior");
+        Assert.Throws<AlvoCriadoDuranteExportacaoException>(() => Exportador.Exportar(Teste(), formato, alvo, substituir: false));
+        Assert.Equal("anterior", File.ReadAllText(alvo));
+        Assert.Equal([alvo], Directory.GetFiles(_pasta));
+    }
+
     [Fact]
     public void Fuso_recusa_o_excel_e_mantem_o_zip()
     {

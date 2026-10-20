@@ -12,16 +12,21 @@ namespace Luna.Apresentacao.Tests;
 /// <summary>A gravação do motor com os tipos da interface, como na composição do Luna.Desktop.</summary>
 internal static class Exportacoes
 {
-    public static readonly ExecutorDeExportacao DoMotor = (resultado, formato, alvo, progresso, cancelamento) =>
+    public static readonly ExecutorDeExportacao DoMotor = (resultado, formato, alvo, substituir, progresso, cancelamento) =>
     {
         try
         {
             return Exportador.Exportar(resultado, formato, alvo, cancelamento,
-                new Repasse(p => progresso.Report(new PassoDeGravacao((EtapaDeGravacao)(int)p.Etapa, p.Aba, p.TotalAbas, p.Nome, p.Linhas))));
+                new Repasse(p => progresso.Report(new PassoDeGravacao((EtapaDeGravacao)(int)p.Etapa, p.Aba, p.TotalAbas, p.Nome, p.Linhas))),
+                substituir);
         }
         catch (ExportacaoRecusadaException e)
         {
             throw new GravacaoRecusadaException(e.Message, e);
+        }
+        catch (AlvoCriadoDuranteExportacaoException e)
+        {
+            throw new ArquivoCriadoDuranteGravacaoException(e.Alvo, e);
         }
     };
 
@@ -229,12 +234,19 @@ public sealed class ResultadosExportacaoTests : IDisposable
         Assert.Equal(8, p.Resultados.Tabelas.Count);
 
         var execucao = p.Base.ProcessarCommand.ExecuteAsync(null);
-        await segundo.Task.WaitAsync(TimeSpan.FromSeconds(30));
-        Assert.False(p.Resultados.TemResultado);
-        Assert.Empty(p.Resultados.Tabelas);
-        Assert.Null(p.Resultados.TabelaAtual);
-        libera.SetResult();
-        await execucao;
+        try
+        {
+            await segundo.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.False(p.Resultados.TemResultado);
+            Assert.Empty(p.Resultados.Tabelas);
+            Assert.Null(p.Resultados.TabelaAtual);
+        }
+        finally
+        {
+            // Solta o processamento parado mesmo se uma asserção falhar.
+            libera.TrySetResult();
+        }
+        await execucao.WaitAsync(TimeSpan.FromSeconds(30));
         Assert.Equal(8, p.Resultados.Tabelas.Count);
     }
 
@@ -407,22 +419,23 @@ public sealed class ResultadosExportacaoTests : IDisposable
     {
         string alvo = Path.Combine(_pasta, "TESTE_data_luna_resultado.zip");
         File.WriteAllText(alvo, "anterior");
-        int gravacoes = 0;
+        var autorizacoes = new List<bool>();
         var dialogos = new Dialogos(substituir: false);
-        var p = await Processado(Teste, dialogos, (r, f, a, g, t) => { gravacoes++; return Exportacoes.DoMotor(r, f, a, g, t); });
+        var p = await Processado(Teste, dialogos, (r, f, a, s, g, t) => { autorizacoes.Add(s); return Exportacoes.DoMotor(r, f, a, s, g, t); });
         var e = p.Exportacao;
         e.Pasta = _pasta;
 
         await e.GravarCommand.ExecuteAsync("zip");
         Assert.Equal([alvo], dialogos.Perguntas);
-        Assert.Equal(0, gravacoes);
+        Assert.Empty(autorizacoes);
         Assert.Equal(EstadoExportacao.Ocioso, e.Estado);
         Assert.Equal("anterior", File.ReadAllText(alvo));
 
-        // Sem arquivo no destino do Excel: grava sem perguntar.
+        // Sem arquivo no destino do Excel: grava sem perguntar e sem autorização para substituir.
         await e.GravarCommand.ExecuteAsync("xlsx");
         Assert.Single(dialogos.Perguntas);
-        Assert.Equal(1, gravacoes);
+        Assert.Equal([false], autorizacoes);
+        Assert.Equal(EstadoExportacao.Concluido, e.Estado);
     }
 
     [Fact]
@@ -430,13 +443,73 @@ public sealed class ResultadosExportacaoTests : IDisposable
     {
         string alvo = Path.Combine(_pasta, "TESTE_data_luna_resultado.zip");
         File.WriteAllText(alvo, "anterior");
+        var autorizacoes = new List<bool>();
         var dialogos = new Dialogos(substituir: true);
-        var p = await Processado(Teste, dialogos);
+        var p = await Processado(Teste, dialogos, (r, f, a, s, g, t) => { autorizacoes.Add(s); return Exportacoes.DoMotor(r, f, a, s, g, t); });
         p.Exportacao.Pasta = _pasta;
         await p.Exportacao.GravarCommand.ExecuteAsync("zip");
         Assert.Equal([alvo], dialogos.Perguntas);
+        Assert.Equal([true], autorizacoes);
         Assert.Equal(EstadoExportacao.Concluido, p.Exportacao.Estado);
         Assert.NotEqual("anterior", File.ReadAllText(alvo));
+        Assert.Equal([alvo], Directory.GetFiles(_pasta));
+    }
+
+    [Theory]
+    [InlineData("xlsx", false)]
+    [InlineData("zip", false)]
+    [InlineData("xlsx", true)]
+    [InlineData("zip", true)]
+    public async Task Arquivo_criado_durante_a_gravacao_sem_confirmacao_nao_e_substituido(string formato, bool bloqueado)
+    {
+        // Outra instância cria o alvo (e, se bloqueado, o mantém aberto) entre a conferência e a publicação:
+        // o aviso de Publicacao sai antes do File.Move, no mesmo thread, então a corrida é determinística.
+        string alvo = Path.Combine(_pasta, $"TESTE_data_luna_resultado.{formato}");
+        FileStream? outraInstancia = null;
+        var autorizacoes = new List<bool>();
+        var dialogos = new Dialogos(substituir: true);
+        var p = await Processado(Teste, dialogos, (r, f, a, s, g, t) =>
+        {
+            autorizacoes.Add(s);
+            return Exportacoes.DoMotor(r, f, a, s, new Progresso(passo =>
+            {
+                g.Report(passo);
+                if (passo.Etapa == EtapaDeGravacao.Publicacao && autorizacoes.Count == 1)
+                {
+                    File.WriteAllText(a, "outra instância");
+                    if (bloqueado)
+                        outraInstancia = new FileStream(a, FileMode.Open, FileAccess.Read, FileShare.Read);
+                }
+            }), t);
+        });
+        var e = p.Exportacao;
+        e.Pasta = _pasta;
+        try
+        {
+            await e.GravarCommand.ExecuteAsync(formato);
+        }
+        finally
+        {
+            outraInstancia?.Dispose();
+        }
+
+        Assert.Empty(dialogos.Perguntas);
+        Assert.Equal([false], autorizacoes);
+        Assert.Equal(EstadoExportacao.Erro, e.Estado);
+        Assert.Equal($"O arquivo {alvo} foi criado por outro programa durante a gravação e não foi substituído. " +
+            "Grave de novo para confirmar a substituição.", e.MensagemDeErro);
+        Assert.Null(e.CaminhoGravado);
+        Assert.Equal("outra instância", File.ReadAllText(alvo));
+        Assert.Equal([alvo], Directory.GetFiles(_pasta));
+        Assert.False(p.Base.Bloqueado);
+
+        // De novo: agora o arquivo existe, a confirmação é pedida e a substituição vale.
+        await e.GravarCommand.ExecuteAsync(formato);
+        Assert.Equal([alvo], dialogos.Perguntas);
+        Assert.Equal([false, true], autorizacoes);
+        Assert.Equal(EstadoExportacao.Concluido, e.Estado);
+        Assert.NotEqual("outra instância", File.ReadAllText(alvo));
+        Assert.Equal([alvo], Directory.GetFiles(_pasta));
     }
 
     [Theory]
@@ -447,18 +520,24 @@ public sealed class ResultadosExportacaoTests : IDisposable
         string alvo = Path.Combine(_pasta, $"TESTE_data_luna_resultado.{formato}");
         File.WriteAllText(alvo, "anterior");
         ExportacaoViewModel? e = null;
+        var autorizacoes = new List<bool>();
         // Cancela quando a terceira aba começa, como o botão Cancelar no meio da gravação.
-        var p = await Processado(Teste, exportar: (r, f, a, g, t) => Exportacoes.DoMotor(r, f, a, new Progresso(passo =>
+        var p = await Processado(Teste, exportar: (r, f, a, s, g, t) =>
         {
-            g.Report(passo);
-            if (passo is { Etapa: EtapaDeGravacao.Gravacao, Aba: 3 })
-                e!.GravarCancelCommand.Execute(null);
-        }), t));
+            autorizacoes.Add(s);
+            return Exportacoes.DoMotor(r, f, a, s, new Progresso(passo =>
+            {
+                g.Report(passo);
+                if (passo is { Etapa: EtapaDeGravacao.Gravacao, Aba: 3 })
+                    e!.GravarCancelCommand.Execute(null);
+            }), t);
+        });
         e = p.Exportacao;
         e.Pasta = _pasta;
 
         await e.GravarCommand.ExecuteAsync(formato);
 
+        Assert.Equal([true], autorizacoes);
         Assert.Equal(EstadoExportacao.Cancelado, e.Estado);
         Assert.Equal("Exportação cancelada. Nenhum arquivo foi alterado.", e.TextoEstado);
         Assert.Null(e.MensagemDeErro);
@@ -498,12 +577,15 @@ public sealed class ResultadosExportacaoTests : IDisposable
     {
         string alvo = Path.Combine(_pasta, "TESTE_data_luna_resultado.xlsx");
         File.WriteAllText(alvo, "anterior");
-        var p = await Processado(Teste, new Dialogos(substituir: true));
+        var autorizacoes = new List<bool>();
+        var p = await Processado(Teste, new Dialogos(substituir: true),
+            (r, f, a, s, g, t) => { autorizacoes.Add(s); return Exportacoes.DoMotor(r, f, a, s, g, t); });
         var e = p.Exportacao;
         e.Pasta = _pasta;
         using (new FileStream(alvo, FileMode.Open, FileAccess.Read, FileShare.None))
             await e.GravarCommand.ExecuteAsync("xlsx");
 
+        Assert.Equal([true], autorizacoes);
         Assert.Equal(EstadoExportacao.Erro, e.Estado);
         Assert.StartsWith("Não foi possível gravar o arquivo. Ele pode estar aberto em outro programa", e.MensagemDeErro);
         Assert.DoesNotContain("   at ", e.MensagemDeErro);
@@ -515,7 +597,7 @@ public sealed class ResultadosExportacaoTests : IDisposable
     public async Task Pasta_inexistente_nao_chama_o_motor()
     {
         int gravacoes = 0;
-        var p = await Processado(Teste, exportar: (_, _, a, _, _) => { gravacoes++; return a; });
+        var p = await Processado(Teste, exportar: (_, _, a, _, _, _) => { gravacoes++; return a; });
         var e = p.Exportacao;
         e.Pasta = Path.Combine(_pasta, "nao_existe");
         await e.GravarCommand.ExecuteAsync("zip");
@@ -527,7 +609,7 @@ public sealed class ResultadosExportacaoTests : IDisposable
     [Fact]
     public async Task Erro_inesperado_nao_mostra_detalhe_interno()
     {
-        var p = await Processado(Teste, exportar: (_, _, _, _, _) => throw new InvalidOperationException("Foo.cs:linha 42"));
+        var p = await Processado(Teste, exportar: (_, _, _, _, _, _) => throw new InvalidOperationException("Foo.cs:linha 42"));
         p.Exportacao.Pasta = _pasta;
         await p.Exportacao.GravarCommand.ExecuteAsync("zip");
         Assert.Equal("Erro inesperado ao gravar a exportação (InvalidOperationException). O arquivo anterior não foi alterado.",
@@ -542,7 +624,7 @@ public sealed class ResultadosExportacaoTests : IDisposable
         int processamentos = 0, gravacoes = 0;
         var p = Principal(
             processar: (par, g, t) => { processamentos++; return Caso.Executar(par, g, t); },
-            exportar: (r, f, a, g, t) =>
+            exportar: (r, f, a, s, g, t) =>
             {
                 gravacoes++;
                 g.Report(new PassoDeGravacao(EtapaDeGravacao.Gravacao, 1, 8, "Base Bruta", 76));
@@ -555,23 +637,29 @@ public sealed class ResultadosExportacaoTests : IDisposable
         p.Exportacao.Pasta = _pasta;
 
         var gravacao = p.Exportacao.GravarCommand.ExecuteAsync("zip");
-        await comecou.Task.WaitAsync(TimeSpan.FromSeconds(30));
-        Assert.True(p.Exportacao.EmExecucao);
-        Assert.True(p.Base.Bloqueado);
-        Assert.False(p.Base.ProcessarCommand.CanExecute(null));
-        await p.Base.ProcessarCommand.ExecuteAsync(null);
-        Assert.Equal(1, processamentos);
-        Assert.NotNull(p.Base.Resultado);
-        Assert.Equal(EstadoExecucao.Concluido, p.Base.Estado);
+        try
+        {
+            await comecou.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.True(p.Exportacao.EmExecucao);
+            Assert.True(p.Base.Bloqueado);
+            Assert.False(p.Base.ProcessarCommand.CanExecute(null));
+            await p.Base.ProcessarCommand.ExecuteAsync(null);
+            Assert.Equal(1, processamentos);
+            Assert.NotNull(p.Base.Resultado);
+            Assert.Equal(EstadoExecucao.Concluido, p.Base.Estado);
 
-        // Nem uma segunda gravação ao mesmo tempo.
-        Assert.False(p.Exportacao.GravarCommand.CanExecute("xlsx"));
-        await p.Exportacao.GravarCommand.ExecuteAsync("xlsx");
-        Assert.Equal(1, gravacoes);
+            // Nem uma segunda gravação ao mesmo tempo.
+            Assert.False(p.Exportacao.GravarCommand.CanExecute("xlsx"));
+            await p.Exportacao.GravarCommand.ExecuteAsync("xlsx");
+            Assert.Equal(1, gravacoes);
 
-        Assert.Equal("Arquivo 1/8: Base Bruta (76 linhas)", p.Exportacao.Passo);
-        libera.SetResult();
-        await gravacao;
+            Assert.Equal("Arquivo 1/8: Base Bruta (76 linhas)", p.Exportacao.Passo);
+        }
+        finally
+        {
+            libera.TrySetResult();
+        }
+        await gravacao.WaitAsync(TimeSpan.FromSeconds(30));
         Assert.Equal(EstadoExportacao.Concluido, p.Exportacao.Estado);
         Assert.False(p.Base.Bloqueado);
         Assert.True(p.Base.ProcessarCommand.CanExecute(null));
@@ -593,20 +681,26 @@ public sealed class ResultadosExportacaoTests : IDisposable
                 }
                 return Caso.Executar(par, g, t);
             },
-            exportar: (_, _, a, _, _) => { gravacoes++; return a; });
+            exportar: (_, _, a, _, _, _) => { gravacoes++; return a; });
         p.Base.Caminho = Teste;
         await p.Base.ProcessarCommand.ExecuteAsync(null);
         p.Exportacao.Pasta = _pasta;
         Assert.True(p.Exportacao.GravarCommand.CanExecute("zip"));
 
         var execucao = p.Base.ProcessarCommand.ExecuteAsync(null);
-        await comecou.Task.WaitAsync(TimeSpan.FromSeconds(30));
-        Assert.False(p.Exportacao.GravarCommand.CanExecute("zip"));
-        await p.Exportacao.GravarCommand.ExecuteAsync("zip");
-        Assert.Equal(0, gravacoes);
-        Assert.Equal(EstadoExportacao.Ocioso, p.Exportacao.Estado);
-        libera.SetResult();
-        await execucao;
+        try
+        {
+            await comecou.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.False(p.Exportacao.GravarCommand.CanExecute("zip"));
+            await p.Exportacao.GravarCommand.ExecuteAsync("zip");
+            Assert.Equal(0, gravacoes);
+            Assert.Equal(EstadoExportacao.Ocioso, p.Exportacao.Estado);
+        }
+        finally
+        {
+            libera.TrySetResult();
+        }
+        await execucao.WaitAsync(TimeSpan.FromSeconds(30));
         Assert.True(p.Exportacao.GravarCommand.CanExecute("zip"));
     }
 
@@ -634,7 +728,7 @@ public sealed class ResultadosExportacaoTests : IDisposable
         IProgress<PassoDeGravacao>? primeira = null;
         var segunda = new TaskCompletionSource();
         var libera = new TaskCompletionSource();
-        var p = await Processado(Teste, exportar: (r, f, a, g, t) =>
+        var p = await Processado(Teste, exportar: (r, f, a, s, g, t) =>
         {
             if (primeira is null)
             {
@@ -658,11 +752,17 @@ public sealed class ResultadosExportacaoTests : IDisposable
         Assert.Equal(EstadoExportacao.Concluido, e.Estado);
 
         var corrente = e.GravarCommand.ExecuteAsync("zip");
-        await segunda.Task;
-        primeira.Report(new PassoDeGravacao(EtapaDeGravacao.Gravacao, 5, 8, "atrasado", 1));
-        Assert.Equal("Arquivo 1/8: atual (1 linhas)", e.Passo);
-        libera.SetResult();
-        await corrente;
+        try
+        {
+            await segunda.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            primeira.Report(new PassoDeGravacao(EtapaDeGravacao.Gravacao, 5, 8, "atrasado", 1));
+            Assert.Equal("Arquivo 1/8: atual (1 linhas)", e.Passo);
+        }
+        finally
+        {
+            libera.TrySetResult();
+        }
+        await corrente.WaitAsync(TimeSpan.FromSeconds(30));
 
         Assert.Equal(estadoBase, p.Base.TextoEstado);
         Assert.Equal(estagios, p.Base.Estagios.Select(x => (x.Estagio, x.Iniciado)));
@@ -686,10 +786,11 @@ public sealed class ResultadosExportacaoTests : IDisposable
     [InlineData(typeof(IOException), "Não foi possível gravar o arquivo.")]
     [InlineData(typeof(UnauthorizedAccessException), "Não foi possível gravar o arquivo.")]
     [InlineData(typeof(GravacaoRecusadaException), "msg")]
+    [InlineData(typeof(ArquivoCriadoDuranteGravacaoException), "O arquivo msg foi criado por outro programa durante a gravação")]
     public void Mensagens_de_erro_da_exportacao(Type tipo, string inicio)
     {
-        var erro = tipo == typeof(GravacaoRecusadaException)
-            ? new GravacaoRecusadaException("msg")
+        var erro = tipo == typeof(GravacaoRecusadaException) ? new GravacaoRecusadaException("msg")
+            : tipo == typeof(ArquivoCriadoDuranteGravacaoException) ? new ArquivoCriadoDuranteGravacaoException("msg")
             : (Exception)Activator.CreateInstance(tipo, "msg")!;
         Assert.StartsWith(inicio, MensagemDeErro.ParaExportacao(erro));
         Assert.StartsWith("Não foi possível ler o arquivo.", MensagemDeErro.Para(new IOException("x")));

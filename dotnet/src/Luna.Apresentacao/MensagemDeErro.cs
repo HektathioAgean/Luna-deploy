@@ -33,6 +33,9 @@ public static class MensagemDeErro
         OperationCanceledException => "Exportação cancelada. Nenhum arquivo foi alterado.",
         GravacaoRecusadaException => erro.Message,
         DirectoryNotFoundException => "A pasta de destino não existe ou não está acessível. Nenhum arquivo foi alterado.",
+        ArquivoCriadoDuranteGravacaoException criado =>
+            $"O arquivo {criado.Caminho} foi criado por outro programa durante a gravação e não foi substituído. " +
+            "Grave de novo para confirmar a substituição.",
         IOException or UnauthorizedAccessException =>
             "Não foi possível gravar o arquivo. Ele pode estar aberto em outro programa (feche-o e grave de novo) ou a " +
             $"pasta pode estar sem permissão de escrita. O arquivo anterior não foi alterado. ({erro.Message})",

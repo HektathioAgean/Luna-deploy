@@ -8,6 +8,17 @@ namespace Luna.Infrastructure.Exportacao;
 /// </summary>
 public sealed class ExportacaoRecusadaException(string mensagem) : Exception(mensagem);
 
+/// <summary>
+/// Sem autorização para substituir, o alvo apareceu durante a gravação (outro
+/// programa ou outra instância o criou). Ele fica como está e o temporário é apagado.
+/// </summary>
+public sealed class AlvoCriadoDuranteExportacaoException(string alvo, Exception causa) : IOException(
+    $"O arquivo '{alvo}' foi criado por outro programa durante a gravacao e nao foi substituido. " +
+    "Exporte de novo para confirmar a substituicao.", causa)
+{
+    public string Alvo { get; } = alvo;
+}
+
 /// <summary>Etapas da exportação, na ordem em que são avisadas.</summary>
 public enum EtapaExportacao
 {
@@ -50,14 +61,21 @@ public static class Exportador
     /// <exception cref="DirectoryNotFoundException">Pasta de destino inexistente.</exception>
     /// <exception cref="ExportacaoRecusadaException">Conteúdo que o Excel não comporta.</exception>
     /// <exception cref="OperationCanceledException">Cancelada; nada é publicado.</exception>
+    /// <exception cref="AlvoCriadoDuranteExportacaoException">
+    /// <paramref name="substituir"/> falso e o alvo existe na publicação.
+    /// </exception>
     /// <param name="progresso">
     /// Etapas na ordem: Validacao (só xlsx), Gravacao de cada saída, Publicacao, Concluido.
     /// Os equivalentes do Python são <c>gravacao_{formato}</c> e <c>concluido</c>
     /// (sem <c>releitura_base_bruta</c>: aqui a base não é relida).
     /// </param>
+    /// <param name="substituir">
+    /// Falso: a publicação não troca um alvo que exista nela (quem chama viu o alvo
+    /// ausente e não pediu confirmação); o arquivo que surgiu fica como está.
+    /// </param>
     public static string Exportar(
         ResultadoProcessamento resultado, string formato, string destino, CancellationToken cancelamento = default,
-        IProgress<ProgressoExportacao>? progresso = null)
+        IProgress<ProgressoExportacao>? progresso = null, bool substituir = true)
     {
         void Avisar(ProgressoExportacao aviso)
         {
@@ -98,7 +116,7 @@ public static class Exportador
                 arquivo.Flush(flushToDisk: true);
             }
             Avisar(new ProgressoExportacao(EtapaExportacao.Publicacao));
-            Publicar(temporario, alvo);
+            Publicar(temporario, alvo, substituir);
         }
         catch
         {
@@ -121,11 +139,17 @@ public static class Exportador
     }
 
     // os.replace do Python: troca o alvo de uma vez (mesma pasta, mesmo volume).
-    private static void Publicar(string temporario, string alvo)
+    // Sem substituir, o mesmo movimento falha se o alvo existe (MoveFileEx sem
+    // REPLACE_EXISTING): não há intervalo entre conferir e publicar.
+    private static void Publicar(string temporario, string alvo, bool substituir)
     {
         try
         {
-            File.Move(temporario, alvo, overwrite: true);
+            File.Move(temporario, alvo, overwrite: substituir);
+        }
+        catch (IOException e) when (!substituir && Path.Exists(alvo))
+        {
+            throw new AlvoCriadoDuranteExportacaoException(alvo, e);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {

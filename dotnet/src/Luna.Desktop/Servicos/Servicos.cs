@@ -53,16 +53,20 @@ public sealed class DialogosDeExportacaoWpf(Window dono) : IDialogosDeExportacao
 public static class ExportacaoDoMotor
 {
     public static string Gravar(
-        ResultadoProcessamento resultado, string formato, string alvo, IProgress<PassoDeGravacao> progresso,
+        ResultadoProcessamento resultado, string formato, string alvo, bool substituir, IProgress<PassoDeGravacao> progresso,
         CancellationToken cancelamento)
     {
         try
         {
-            return Exportador.Exportar(resultado, formato, alvo, cancelamento, new Repasse(progresso));
+            return Exportador.Exportar(resultado, formato, alvo, cancelamento, new Repasse(progresso), substituir);
         }
         catch (ExportacaoRecusadaException e)
         {
             throw new GravacaoRecusadaException(e.Message, e);
+        }
+        catch (AlvoCriadoDuranteExportacaoException e)
+        {
+            throw new ArquivoCriadoDuranteGravacaoException(e.Alvo, e);
         }
     }
 

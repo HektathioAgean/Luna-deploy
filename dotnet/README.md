@@ -402,7 +402,15 @@ gravar, Excel ou ZIP fora do thread da interface, progresso por etapa
 "O que vai no arquivo" com as 8 contagens. Arquivo existente: pergunta antes
 (`MessageBox`, padrão Não); recusada, nada é tocado; confirmada, a publicação
 atômica do `Exportador` troca o arquivo só no fim. A pergunta só aparece
-quando o arquivo existe. `Luna.Apresentacao` não referencia a
+quando o arquivo existe. Sem confirmação, a publicação usa movimento sem
+sobrescrita: se outro processo criar o destino durante a gravação, ele é
+preservado e a exportação informa que é preciso tentar novamente para
+confirmar a substituição. O temporário é removido. A autorização vale
+para o caminho; depois de um "Sim", não há controle de versão do arquivo
+que outro processo possa alterar nesse caminho. O parâmetro opcional
+`substituir` do motor mantém `true` como padrão para os demais chamadores;
+o Desktop sempre passa a decisão explicitamente.
+`Luna.Apresentacao` não referencia a
 Infrastructure: a gravação é o delegate `ExecutorDeExportacao`, com
 `PassoDeGravacao` e `GravacaoRecusadaException`; a composição
 (`ExportacaoDoMotor`, Luna.Desktop) liga ao `Exportador` e converte o aviso
@@ -422,6 +430,15 @@ novo descarta Resultados e o estado da exportação. Um aviso de progresso só
 vale para a gravação que o emitiu (contador de execução). As 8 saídas são
 montadas na composição, dentro do `Task.Run` do processamento, fora do thread
 da interface.
+
+**Validação após a revisão do PR13 (20/10/2026):** 289 testes de domínio,
+306 de integração e 69 de apresentação passaram; pytest 98; build da
+solução incluindo WPF com zero erros e avisos. Os nove casos novos cobrem
+colisão na publicação em Excel/ZIP, arquivo concorrente aberto,
+compatibilidade do comportamento padrão e a mensagem de colisão.
+As esperas coordenadas dos testes receberam timeout e liberação em
+`finally`. As medições de UI e desempenho abaixo são as anteriores à
+correção; não foram repetidas nesta revisão.
 
 **Virtualização medida (20/10/2026)** no `Luna.Desktop` real, por um
 programa fora do repo (`luna-fuzz-harness/desktop/virtualizacao`): por aba,

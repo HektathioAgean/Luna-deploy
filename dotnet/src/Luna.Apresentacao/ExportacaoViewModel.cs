@@ -21,7 +21,8 @@ public enum EstadoExportacao
 /// thread da interface, com progresso por aba e cancelamento.
 /// <para>
 /// O nome do arquivo sai do nome da base, como no motor. Se o arquivo já
-/// existe, pede confirmação antes de gravar; recusada, nada é tocado.
+/// existe, pede confirmação antes de gravar; recusada, nada é tocado. Sem
+/// confirmação, o motor não substitui um arquivo que surja durante a gravação.
 /// </para>
 /// </summary>
 public sealed partial class ExportacaoViewModel : ObservableObject
@@ -151,7 +152,9 @@ public sealed partial class ExportacaoViewModel : ObservableObject
             Estado = EstadoExportacao.Erro;
             return;
         }
-        if (File.Exists(alvo) && !_dialogos.ConfirmarSubstituicao(alvo))
+        // A autorização vai até a publicação: sem ela, um alvo criado enquanto grava não é trocado.
+        bool substituir = File.Exists(alvo);
+        if (substituir && !_dialogos.ConfirmarSubstituicao(alvo))
             return;
 
         int execucao = ++_execucao;
@@ -170,7 +173,7 @@ public sealed partial class ExportacaoViewModel : ObservableObject
 
         try
         {
-            string gravado = await Task.Run(() => _executor(resultado, formato!, alvo, progresso, cancelamento), cancelamento);
+            string gravado = await Task.Run(() => _executor(resultado, formato!, alvo, substituir, progresso, cancelamento), cancelamento);
             Decorrido = relogio.Elapsed;
             CaminhoGravado = gravado;
             Estado = EstadoExportacao.Concluido;

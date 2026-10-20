@@ -48,6 +48,14 @@ PR13 (Resultados e Exportação) em revisão; depois o protótipo ScottPlot 5
   `Programa.cs`) e `smoke.ps1` estendido (Resultados, Exportação, confirmar,
   cancelar o Excel da base grande a partir da seção Base). Base sintética de
   300 mil linhas: `luna-fuzz-harness/bench/base300k/` (`gerar_base.py`).
+- Revisão do PR13: a autorização de sobrescrita chega à publicação. Sem
+  confirmação, um destino criado durante a gravação é preservado, a
+  exportação falha com mensagem específica e o temporário é removido.
+  Testes cobrem Excel/ZIP e arquivo concorrente aberto; as esperas
+  coordenadas dos testes têm timeout e liberação em `finally`.
+- Validação após a correção: 289 + 306 + 69 testes .NET, 98 Python;
+  build da solução incluindo WPF sem erros ou avisos. UI e desempenho
+  mantêm as evidências anteriores; não foram medidos novamente.
 - Números e validação no `dotnet/README.md` (seção PR13) e na descrição do PR.
 
 ## Luna.Desktop — esqueleto WPF (PR12, PR #32, mergeado em 20/10/2026)
@@ -226,7 +234,7 @@ Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.
 
 ```powershell
 .venv\Scripts\python -m pytest -q        # 98 passed
-dotnet test dotnet\Luna.sln              # 289 + 302 + 64 passed
+dotnet test dotnet\Luna.sln              # 289 + 306 + 69 passed
 ```
 
 O contrato só vale com as versões travadas (`tests/test_contrato.py` falha
