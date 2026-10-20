@@ -7,7 +7,7 @@ Estado em 20/10/2026.
 | Item | Situação |
 |---|---|
 | `main` | até o PR12: `Luna.Desktop` esqueleto WPF (`21cf04a`) |
-| PR13 — `pr13-resultados-exportacao` | Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP, **aberto para revisão** |
+| PR #33 — `pr13-resultados-exportacao` | Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP, **aberto para revisão** |
 | PR #32 — `pr12-desktop-esqueleto` | `Luna.Desktop` (WPF): Base, Validação, Processamento, **mergeado** em 20/10 (`21cf04a`) |
 | PR #31 — `pr11-painel-cliente` | painel do cliente em Application (PR11), **mergeado** em 20/10 (`acc331d`) |
 | PR #30 — `pr10-progresso-cancelamento` | progresso por estágio e cancelamento (PR10), **mergeado** em 20/10 (`ca2256e`) |
@@ -27,7 +27,7 @@ self-contained win-x64 portátil; Fluent). Ordem do §5: PR10–PR12 mergeados,
 PR13 (Resultados e Exportação) em revisão; depois o protótipo ScottPlot 5
 (§4.2), PR14 (Painel do Cliente) e PR15 (publicação portátil).
 
-## Resultados e Exportação (PR13, 20/10/2026)
+## Resultados e Exportação (PR13, PR #33, 20/10/2026)
 
 - Plano aprovado em 20/10 com decisões definitivas: as 8 saídas de
   `ResultadoProcessamento.Saidas` (Janelas some com o cálculo desligado);
