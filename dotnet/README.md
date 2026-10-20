@@ -8,7 +8,7 @@ substituição ser aprovada.
 | Projeto | Conteúdo | Dependências |
 |---|---|---|
 | `src/Luna.Domain` | regras e funções matemáticas puras | nenhuma (só BCL) |
-| `src/Luna.Application` | caso de uso `ProcessarBase`, `ParametrosProcessamento`, porta `ILeitorDeBase` | Domain |
+| `src/Luna.Application` | caso de uso `ProcessarBase`, `ParametrosProcessamento`, porta `ILeitorDeBase`, `SaidasExportacao` (as 8 tabelas da exportação) | Domain |
 | `src/Luna.Infrastructure` | `CarregadorDeArquivo`, leitura de CSV e de XLSX/XLSM | Application, DocumentFormat.OpenXml 3.5.1 (MIT) |
 | `tests/Luna.Domain.Tests` | testes de unidade e paridade com o contrato | xUnit |
 | `tests/Luna.Integration.Tests` | leitura de arquivo e fluxo ponta a ponta contra o Python | xUnit |
@@ -81,6 +81,58 @@ coluna do pandas (inteiro com vazio vira float). O domínio passou a aceitar
 os tipos de célula do Excel na coluna de data como o pandas (`date` vira
 meia-noite; inteiro é lido como texto ISO; float, bool, hora e duração ficam
 inválidos; número na faixa de serial é rejeitado).
+
+PR8 — preparação das oito saídas da exportação (`SaidasExportacao`,
+`TabelaSaida`, `ColunaSaida`): Base Bruta, Base Validada, Base Detalhada,
+Inconsistencias, Expurgados, Anomalias, Medianas Cliente e Janelas
+Atendimento, na ordem de `SAIDAS` (`src/engine.py`), com as colunas, os dtypes,
+as linhas e a ordem dos DataFrames que `exportar()` entrega aos gravadores:
+
+- bases por linha: colunas padronizadas com o valor lido e as derivadas de
+  `transform_base` na ordem dela; nome derivado que já existe na base (ex.:
+  `Tempo_Sec`, `Ano`) troca a coluna no lugar, como o pandas, senão vai para o
+  fim. Base Detalhada = merge left com as 11 colunas de referência das
+  medianas, `Cod_Cliente` como object e `_x`/`_y` em nome repetido;
+- dtype de cada coluna como o `pd.DataFrame(linhas)` infere (int64, uint64,
+  float64, bool, datetime64[ns] na faixa do ns, timedelta64[ns], object), as
+  derivadas com Int8/Int16/string e o fuso de cada coluna de data
+  (`datetime64[ns, UTC-03:00]`). Para isso o domínio passou a devolver o
+  offset de cada coluna lida com fuso (`FusoChegou`/`FusoFinalizada`), sem
+  mudar nenhum cálculo;
+- tabela sem colunas (`pd.DataFrame()`: sem linha válida, sem processado,
+  sem janela, esquema inválido) distinta de tabela vazia com cabeçalho, como
+  no motor (o Excel do Python deixa a aba vazia nos dois casos; o CSV traz o
+  cabeçalho no segundo);
+- rastreabilidade: `LinhasDaBase` = posição de cada linha na Base Bruta (o
+  índice do DataFrame; linha do arquivo = posição + 2). A Base Detalhada traz a
+  origem do processado de cada linha; Medianas Cliente e Janelas Atendimento
+  se associam às demais por `Cod_Cliente`.
+
+**Memória:** as tabelas são visões, sem cópia: cada linha é montada quando
+pedida, a partir da `TabelaBruta` e dos registros classificados, e a Base
+Bruta devolve as próprias linhas lidas. São montadas no primeiro acesso a
+`ResultadoProcessamento.Saidas` (quem só processa não paga a inferência de
+tipos). O resultado passa a manter a `TabelaBruta` viva, como o
+`base_padronizada` do Python. A gravação (Excel, ZIP/CSV) é do próximo PR.
+
+### Benchmark das saídas (PR8, 19/10/2026)
+
+Mesma máquina e mesma base de 300.000 linhas do PR7; mediana de 3, cada
+medição em processo próprio. "Percorrer" = processar e montar todas as
+linhas das 8 tabelas (13,9 milhões de células), sem gravar.
+
+| Operação | Antes (`main` `9ccd183`) | Depois |
+|---|---|---|
+| Processar XLSX | 2,96 s · pico 302 MB · 686 MB alocados | 3,00 s · 303 MB · 686 MB |
+| Processar CSV | 2,28 s · pico 349 MB · 1.095 MB alocados | 2,26 s · 349 MB · 1.095 MB |
+| Processar + percorrer XLSX | — | 3,97 s · 311 MB · 1.027 MB |
+| Processar + percorrer CSV | — | 2,88 s · 350 MB · 1.436 MB |
+
+- Processar: mesmo SHA-256 e mesma alocação de antes (as saídas só são
+  montadas quando pedidas).
+- Percorrer custa 0,6–1,0 s e ~340 MB alocados de curta duração (uma
+  `object?[]` e os valores por linha); o pico sobe 1–8 MB: nenhuma tabela é
+  copiada.
 
 ### Benchmark da leitura otimizada (PR7, 19/10/2026)
 
@@ -213,7 +265,10 @@ Sem efeito em alias ou resultado, ou fora do escopo:
   que não é Excel é do C# (`Erro ao abrir o Excel '…': …`), não a do
   `zipfile`/openpyxl; (3) estilo de célula inexistente na coluna do código
   não dá o IndexError do openpyxl (o formato é tratado como vazio); (4)
-  duração acima de ~29.000 anos (limite do `TimeSpan`) vira `#VALUE!`.
+  duração acima de ~29.000 anos (limite do `TimeSpan`) vira `#VALUE!`; (5)
+  inteiro ≥ 2⁶³ com célula vazia na mesma coluna (só em XML escrito à mão: o
+  Excel e o openpyxl gravam esses números como float) continua inteiro no C#;
+  o pandas faz a coluna virar float64.
 - **Fuso numa coluna e nenhuma data ISO na outra:** o Python quebra com o
   `TypeError` do pandas na subtração; o C# para no mesmo ponto, com a mesma
   mensagem (`Cannot subtract tz-naive and tz-aware datetime-like objects`,
@@ -227,6 +282,10 @@ Sem efeito em alias ou resultado, ou fora do escopo:
   errados nas mensagens. O C# descarta o índice (como o motor descarta os
   campos), numera as linhas pela posição e segue. Divergência intencional,
   decidida em 17/10/2026.
+- **Base Bruta da exportação** (PR8): o Python relê o arquivo na hora de
+  exportar; o C# usa a leitura do próprio processamento (a mesma tabela, sem
+  releitura nem segunda cópia). Só difere se o arquivo mudar entre processar e
+  exportar: aí o C# exporta o que foi processado.
 
 ## Regras da migração
 
