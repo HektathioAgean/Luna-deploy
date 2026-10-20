@@ -150,7 +150,11 @@ public static class PaineisDeCliente
             .Order(TextoPython.OrdemCodePoint)
             .ToList();
 
-    /// <param name="diaSemana">"TODOS" (ou vazio) para todas; senão SEG…DOM, sem diferença de maiúsculas.</param>
+    /// <param name="diaSemana">
+    /// "TODOS" (exatamente assim) ou vazio para todas; SEG…DOM sem diferença de
+    /// maiúsculas e com espaços nas pontas ignorados; "todos" ou outro texto dá
+    /// painel vazio, como no Python.
+    /// </param>
     /// <param name="mostrarRotulosTempo">Rótulos HH:MM:SS na linha de tempo do gráfico.</param>
     public static PainelCliente Montar(
         ResultadoProcessamento resultado, string cliente, string diaSemana = Todos, bool mostrarRotulosTempo = true)

@@ -189,8 +189,10 @@ PR11 — painel do cliente, só Application (`PaineisDeCliente.Montar`,
 `ClientesDisponiveis`), como o `montar_painel_cliente` do Python:
 
 - seleção do cliente pelo código sem espaços nas pontas (zeros à esquerda
-  preservados: `00123` ≠ `123`), filtro por dia da semana (`TODOS` ou
-  SEG…DOM, sem diferença de maiúsculas; outro texto dá painel vazio);
+  preservados: `00123` ≠ `123`), filtro por dia da semana: `TODOS`
+  (exatamente assim) ou vazio para todas; SEG…DOM sem diferença de
+  maiúsculas e com espaços nas pontas ignorados; `todos` ou outro texto dá
+  painel vazio, como no Python;
 - `Vol_caixas` (primeira das colunas candidatas do motor; sem nenhuma, zero):
   `normalizar_numero_texto` (o último separador decide a casa decimal) e as
   contagens de nulos, zeros (inválido conta como zero, como no motor) e
