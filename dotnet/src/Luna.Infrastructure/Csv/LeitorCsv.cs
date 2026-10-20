@@ -44,7 +44,8 @@ public static class LeitorCsv
             TabelaBruta tabela;
             try
             {
-                tabela = Montar(TokenizadorCsv.Tokenizar(Decodificar(bytes, encoding), separador));
+                var (codificacao, inicio) = Validar(bytes, encoding);
+                tabela = Montar(TokenizadorCsv.Tokenizar(bytes, inicio, codificacao, separador));
             }
             catch (Exception e) when (e is ErroDeTokenizacaoException or DecoderFallbackException or ErroDeDecodificacaoException)
             {
@@ -72,16 +73,23 @@ public static class LeitorCsv
 
     private sealed class ErroDeDecodificacaoException(string mensagem) : Exception(mensagem);
 
-    /// <summary>Decodificação estrita, como a do Python para cada encoding.</summary>
-    private static string Decodificar(byte[] bytes, string encoding)
+    /// <summary>
+    /// Decodificação estrita, como a do Python para cada encoding: falha aqui,
+    /// antes de tokenizar, com a mesma exceção de decodificar tudo de uma vez.
+    /// Devolve o encoding e onde o texto começa (depois do BOM no utf-8-sig).
+    /// </summary>
+    private static (Encoding Codificacao, int Inicio) Validar(byte[] bytes, string encoding)
     {
         switch (encoding)
         {
             case "utf-8-sig":
                 bool temBom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
-                return new UTF8Encoding(false, true).GetString(bytes, temBom ? 3 : 0, bytes.Length - (temBom ? 3 : 0));
+                int inicio = temBom ? 3 : 0;
+                var utf8 = new UTF8Encoding(false, true);
+                utf8.GetCharCount(bytes, inicio, bytes.Length - inicio);
+                return (utf8, inicio);
             case "latin1":
-                return Encoding.Latin1.GetString(bytes);
+                return (Encoding.Latin1, 0);
             case "cp1252":
                 int indefinido = Array.FindIndex(bytes, b => Array.IndexOf(IndefinidosCp1252, b) >= 0);
                 if (indefinido >= 0)
@@ -89,7 +97,7 @@ public static class LeitorCsv
                     throw new ErroDeDecodificacaoException(string.Create(CultureInfo.InvariantCulture,
                         $"'charmap' codec can't decode byte 0x{bytes[indefinido]:x2} in position {indefinido}: character maps to <undefined>"));
                 }
-                return CodePagesEncodingProvider.Instance.GetEncoding(1252)!.GetString(bytes);
+                return (CodePagesEncodingProvider.Instance.GetEncoding(1252)!, 0);
             default:
                 throw new ArgumentOutOfRangeException(nameof(encoding), encoding, null);
         }
@@ -99,7 +107,7 @@ public static class LeitorCsv
     /// Cabeçalho (parsers.pyx, _get_header) e linhas de dados. Sem nenhuma
     /// linha, o pandas dá EmptyDataError.
     /// </summary>
-    private static TabelaBruta Montar(List<List<string>> linhas)
+    private static TabelaBruta Montar(List<string[]> linhas)
     {
         if (linhas.Count == 0)
             throw new ErroDeTokenizacaoException("No columns to parse from file");
@@ -107,16 +115,29 @@ public static class LeitorCsv
         var cabecalho = NomesDoCabecalho(linhas[0]);
         // Índice implícito: a primeira linha de dados com campos a mais faz
         // dos primeiros campos o índice do DataFrame (descartado pelo motor).
-        int camposDoIndice = linhas.Count > 1 ? Math.Max(0, linhas[1].Count - cabecalho.Count) : 0;
+        int camposDoIndice = linhas.Count > 1 ? Math.Max(0, linhas[1].Length - cabecalho.Count) : 0;
 
         var dados = new List<IReadOnlyList<object?>>(linhas.Count - 1);
-        foreach (var linha in linhas.Skip(1))
+        for (int i = 1; i < linhas.Count; i++)
         {
+            string?[] linha = linhas[i];
+            linhas[i] = null!;
+            // Caso comum: a própria linha vira o registro, com os nulos no lugar.
+            if (camposDoIndice == 0 && linha.Length == cabecalho.Count)
+            {
+                for (int j = 0; j < linha.Length; j++)
+                {
+                    if (MarcadoresDeNulo.Contains(linha[j]!))
+                        linha[j] = null;
+                }
+                dados.Add(linha);
+                continue;
+            }
             var valores = new object?[cabecalho.Count];
             for (int j = 0; j < cabecalho.Count; j++)
             {
                 int indice = camposDoIndice + j;
-                string? campo = indice < linha.Count ? linha[indice] : null;
+                string? campo = indice < linha.Length ? linha[indice] : null;
                 valores[j] = campo is null || MarcadoresDeNulo.Contains(campo) ? null : campo;
             }
             dados.Add(valores);
@@ -129,7 +150,7 @@ public static class LeitorCsv
     /// pulando nomes que já existem no cabeçalho, com os nomes regulares antes
     /// dos sem nome.
     /// </summary>
-    private static List<string> NomesDoCabecalho(List<string> campos)
+    private static List<string> NomesDoCabecalho(IReadOnlyList<string> campos)
     {
         var nomes = new List<string>(campos.Count);
         var semNome = new List<int>();

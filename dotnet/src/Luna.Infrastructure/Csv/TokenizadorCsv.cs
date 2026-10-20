@@ -33,14 +33,21 @@ internal static class TokenizadorCsv
 
     private static bool EspacoOuTab(char c) => c is ' ' or '\t';
 
-    /// <summary>Linhas aceitas (a primeira é o cabeçalho), cada uma com seus campos.</summary>
-    public static List<List<string>> Tokenizar(string texto, char separador)
+    private const int TamanhoDoBloco = 1 << 16;
+
+    /// <summary>
+    /// Linhas aceitas (a primeira é o cabeçalho), cada uma com seus campos.
+    /// Decodifica os bytes em blocos durante a leitura: o texto inteiro nunca
+    /// fica em memória (quem chama já validou o encoding).
+    /// </summary>
+    public static List<string[]> Tokenizar(byte[] bytes, int inicio, System.Text.Encoding codificacao, char separador,
+        int tamanhoDoBloco = TamanhoDoBloco)
     {
-        var linhas = new List<List<string>>();
+        var linhas = new List<string[]>();
         var campos = new List<string>();
         var campo = new System.Text.StringBuilder();
+        var espacosDaLinha = new System.Text.StringBuilder();
         long linhasDoArquivo = 0;
-        int inicioDaLinha = 0;
         var estado = Estado.InicioRegistro;
 
         void FecharCampo()
@@ -52,7 +59,7 @@ internal static class TokenizadorCsv
         void FecharLinha()
         {
             int quantidade = campos.Count;
-            int esperado = linhas.Count > 0 ? linhas[^1].Count : -1;
+            int esperado = linhas.Count > 0 ? linhas[^1].Length : -1;
             // Cabeçalho e primeira linha de dados ficam fora da conferência.
             if (linhas.Count > 1 && quantidade > esperado)
             {
@@ -66,169 +73,189 @@ internal static class TokenizadorCsv
                     campos.Add("");
             }
             linhasDoArquivo++;
-            linhas.Add(campos);
-            campos = [];
+            linhas.Add(campos.ToArray());
+            campos.Clear();
         }
 
-        for (int i = 0; i < texto.Length; i++)
+        var decodificador = codificacao.GetDecoder();
+        // Folga para o par substituto que um bloco pode terminar no meio.
+        var bloco = new char[tamanhoDoBloco + 4];
+        int posicao = inicio;
+        bool completo = false;
+        while (!completo)
         {
-            char c = texto[i];
-            switch (estado)
+            int restante = bytes.Length - posicao;
+            int aLer = Math.Min(restante, tamanhoDoBloco);
+            decodificador.Convert(bytes, posicao, aLer, bloco, 0, bloco.Length, flush: aLer == restante,
+                out int bytesUsados, out int quantos, out completo);
+            posicao += bytesUsados;
+            completo &= posicao == bytes.Length;
+            for (int i = 0; i < quantos; i++)
             {
-                case Estado.LinhaDeEspacos:
-                    if (c == '\n')
-                    {
-                        linhasDoArquivo++;
-                        estado = Estado.InicioRegistro;
-                    }
-                    else if (c == '\r')
-                    {
-                        linhasDoArquivo++;
-                        estado = Estado.ComerCrLfSemLinha;
-                    }
-                    else if (!(EspacoOuTab(c) && c != separador))
-                    {
-                        // Não era linha em branco: volta ao começo da linha e
-                        // relê como campo. O C volta ao último '\n'; depois de
-                        // um CR isso relê linhas já lidas (sem fim, aqui).
-                        i = inicioDaLinha - 1;
-                        estado = Estado.InicioCampo;
-                    }
-                    break;
-
-                case Estado.InicioRegistro:
-                    if (c == '\n')
-                    {
-                        linhasDoArquivo++;
+                char c = bloco[i];
+                switch (estado)
+                {
+                    case Estado.LinhaDeEspacos:
+                        if (c == '\n')
+                        {
+                            linhasDoArquivo++;
+                            estado = Estado.InicioRegistro;
+                        }
+                        else if (c == '\r')
+                        {
+                            linhasDoArquivo++;
+                            estado = Estado.ComerCrLfSemLinha;
+                        }
+                        else if (!(EspacoOuTab(c) && c != separador))
+                        {
+                            // Não era linha em branco: os espaços do começo da
+                            // linha entram no campo, como se a linha fosse relida
+                            // desde o começo. (O C volta ao último '\n'; depois de
+                            // um CR isso relê linhas já lidas.)
+                            campo.Append(espacosDaLinha);
+                            estado = Estado.EmCampo;
+                            i--;
+                        }
+                        else
+                        {
+                            espacosDaLinha.Append(c);
+                        }
                         break;
-                    }
-                    if (c == '\r')
-                    {
-                        linhasDoArquivo++;
-                        estado = Estado.ComerCrLfSemLinha;
+
+                    case Estado.InicioRegistro:
+                        if (c == '\n')
+                        {
+                            linhasDoArquivo++;
+                            break;
+                        }
+                        if (c == '\r')
+                        {
+                            linhasDoArquivo++;
+                            estado = Estado.ComerCrLfSemLinha;
+                            break;
+                        }
+                        if (EspacoOuTab(c) && c != separador)
+                        {
+                            espacosDaLinha.Clear().Append(c);
+                            estado = Estado.LinhaDeEspacos;
+                            break;
+                        }
+                        estado = Estado.InicioCampo;
+                        goto case Estado.InicioCampo;
+
+                    case Estado.InicioCampo:
+                        if (c == '\n')
+                        {
+                            FecharCampo();
+                            FecharLinha();
+                            estado = Estado.InicioRegistro;
+                        }
+                        else if (c == '\r')
+                        {
+                            FecharCampo();
+                            estado = Estado.ComerCrLf;
+                        }
+                        else if (c == Aspas)
+                        {
+                            estado = Estado.EmCampoComAspas;
+                        }
+                        else if (c == separador)
+                        {
+                            FecharCampo();
+                        }
+                        else
+                        {
+                            campo.Append(c);
+                            estado = Estado.EmCampo;
+                        }
                         break;
-                    }
-                    if (EspacoOuTab(c) && c != separador)
-                    {
-                        inicioDaLinha = i;
-                        estado = Estado.LinhaDeEspacos;
+
+                    case Estado.EmCampo:
+                        if (c == '\n')
+                        {
+                            FecharCampo();
+                            FecharLinha();
+                            estado = Estado.InicioRegistro;
+                        }
+                        else if (c == '\r')
+                        {
+                            FecharCampo();
+                            estado = Estado.ComerCrLf;
+                        }
+                        else if (c == separador)
+                        {
+                            FecharCampo();
+                            estado = Estado.InicioCampo;
+                        }
+                        else
+                        {
+                            campo.Append(c);
+                        }
                         break;
-                    }
-                    estado = Estado.InicioCampo;
-                    goto case Estado.InicioCampo;
 
-                case Estado.InicioCampo:
-                    if (c == '\n')
-                    {
-                        FecharCampo();
-                        FecharLinha();
+                    case Estado.EmCampoComAspas:
+                        if (c == Aspas)
+                            estado = Estado.AspasEmCampoComAspas;
+                        else
+                            campo.Append(c);
+                        break;
+
+                    case Estado.AspasEmCampoComAspas:
+                        if (c == Aspas)
+                        {
+                            campo.Append(c);
+                            estado = Estado.EmCampoComAspas;
+                        }
+                        else if (c == separador)
+                        {
+                            FecharCampo();
+                            estado = Estado.InicioCampo;
+                        }
+                        else if (c == '\n')
+                        {
+                            FecharCampo();
+                            FecharLinha();
+                            estado = Estado.InicioRegistro;
+                        }
+                        else if (c == '\r')
+                        {
+                            FecharCampo();
+                            estado = Estado.ComerCrLf;
+                        }
+                        else
+                        {
+                            campo.Append(c);
+                            estado = Estado.EmCampo;
+                        }
+                        break;
+
+                    case Estado.ComerCrLf:
+                        if (c == '\n')
+                        {
+                            FecharLinha();
+                            estado = Estado.InicioRegistro;
+                        }
+                        else if (c == separador)
+                        {
+                            // Arquivo separado por CR: a linha nova começa com campo vazio.
+                            FecharLinha();
+                            FecharCampo();
+                            estado = Estado.InicioCampo;
+                        }
+                        else
+                        {
+                            FecharLinha();
+                            estado = Estado.InicioRegistro;
+                            i--;
+                        }
+                        break;
+
+                    case Estado.ComerCrLfSemLinha:
                         estado = Estado.InicioRegistro;
-                    }
-                    else if (c == '\r')
-                    {
-                        FecharCampo();
-                        estado = Estado.ComerCrLf;
-                    }
-                    else if (c == Aspas)
-                    {
-                        estado = Estado.EmCampoComAspas;
-                    }
-                    else if (c == separador)
-                    {
-                        FecharCampo();
-                    }
-                    else
-                    {
-                        campo.Append(c);
-                        estado = Estado.EmCampo;
-                    }
-                    break;
-
-                case Estado.EmCampo:
-                    if (c == '\n')
-                    {
-                        FecharCampo();
-                        FecharLinha();
-                        estado = Estado.InicioRegistro;
-                    }
-                    else if (c == '\r')
-                    {
-                        FecharCampo();
-                        estado = Estado.ComerCrLf;
-                    }
-                    else if (c == separador)
-                    {
-                        FecharCampo();
-                        estado = Estado.InicioCampo;
-                    }
-                    else
-                    {
-                        campo.Append(c);
-                    }
-                    break;
-
-                case Estado.EmCampoComAspas:
-                    if (c == Aspas)
-                        estado = Estado.AspasEmCampoComAspas;
-                    else
-                        campo.Append(c);
-                    break;
-
-                case Estado.AspasEmCampoComAspas:
-                    if (c == Aspas)
-                    {
-                        campo.Append(c);
-                        estado = Estado.EmCampoComAspas;
-                    }
-                    else if (c == separador)
-                    {
-                        FecharCampo();
-                        estado = Estado.InicioCampo;
-                    }
-                    else if (c == '\n')
-                    {
-                        FecharCampo();
-                        FecharLinha();
-                        estado = Estado.InicioRegistro;
-                    }
-                    else if (c == '\r')
-                    {
-                        FecharCampo();
-                        estado = Estado.ComerCrLf;
-                    }
-                    else
-                    {
-                        campo.Append(c);
-                        estado = Estado.EmCampo;
-                    }
-                    break;
-
-                case Estado.ComerCrLf:
-                    if (c == '\n')
-                    {
-                        FecharLinha();
-                        estado = Estado.InicioRegistro;
-                    }
-                    else if (c == separador)
-                    {
-                        // Arquivo separado por CR: a linha nova começa com campo vazio.
-                        FecharLinha();
-                        FecharCampo();
-                        estado = Estado.InicioCampo;
-                    }
-                    else
-                    {
-                        FecharLinha();
-                        estado = Estado.InicioRegistro;
-                        i--;
-                    }
-                    break;
-
-                case Estado.ComerCrLfSemLinha:
-                    estado = Estado.InicioRegistro;
-                    if (c != '\n' && c != separador)
-                        i--;
-                    break;
+                        if (c != '\n' && c != separador)
+                            i--;
+                        break;
+                }
             }
         }
 

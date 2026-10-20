@@ -146,6 +146,55 @@ public sealed class LeitorCsvTests : IDisposable
         Assert.Equal(new string?[][] { ["A", "x", "y"], ["  B", "x", "y"], ["C", "x", "y"] }, Linhas(tabela));
     }
 
+    // A leitura decodifica em blocos: caractere multibyte, CRLF, aspas e linha
+    // de espaços cortados entre dois blocos não podem mudar nada.
+    [Theory]
+    [InlineData("utf-8")]
+    [InlineData("latin1")]
+    [InlineData("cp1252")]
+    public void Qualquer_tamanho_de_bloco_da_o_mesmo_resultado(string encoding)
+    {
+        string[] textos =
+        [
+            "Cod_Cliente;Chegou_em;Finalizada_em\r\nJoão;\"a;\r\nb\";çã\r\n\r\n  x;y;z\r\n\"q\"\"t\";1;2",
+            "Cod_Cliente;Chegou_em;Finalizada_em\rA;x;y\r  B;x;y\r\t\r;C;é\r",
+            "a,b\n1,2\n   \n\"aberta,3\n",
+            "Cód;Chegou_em;Finalizada_em\nA;B;C;D\nE;F\n",
+            encoding == "utf-8" ? "Cod;X\n😀;\"𝔘😀\"\n€;x\n" : "Cod;X\n€;x\n",
+        ];
+        Encoding codificacao = encoding switch
+        {
+            "utf-8" => new UTF8Encoding(false, true),
+            "latin1" => Encoding.Latin1,
+            _ => CodePagesEncodingProvider.Instance.GetEncoding(1252)!,
+        };
+        foreach (string texto in textos)
+        {
+            byte[] bytes = codificacao.GetBytes(texto);
+            foreach (char separador in ";,")
+            {
+                string esperado = Tokenizado(bytes, codificacao, separador, null);
+                foreach (int bloco in new[] { 1, 2, 3, 5, 7, 64 })
+                    Assert.Equal(esperado, Tokenizado(bytes, codificacao, separador, bloco));
+            }
+        }
+    }
+
+    private static string Tokenizado(byte[] bytes, Encoding codificacao, char separador, int? bloco)
+    {
+        try
+        {
+            var linhas = bloco is int b
+                ? TokenizadorCsv.Tokenizar(bytes, 0, codificacao, separador, b)
+                : TokenizadorCsv.Tokenizar(bytes, 0, codificacao, separador);
+            return string.Join("\n", linhas.Select(l => string.Join("|", l.Select(c => $"[{c}]"))));
+        }
+        catch (ErroDeTokenizacaoException e)
+        {
+            return "erro: " + e.Message;
+        }
+    }
+
     [Fact]
     public void So_cabecalho_da_tabela_sem_linhas()
     {
