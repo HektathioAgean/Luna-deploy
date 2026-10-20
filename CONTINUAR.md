@@ -7,7 +7,7 @@ Estado em 20/10/2026.
 | Item | Situação |
 |---|---|
 | `main` | até o PR10: progresso e cancelamento (`ca2256e`) |
-| PR11 — `pr11-painel-cliente` | painel do cliente em Application (PR11), **aberto para revisão** |
+| PR #31 — `pr11-painel-cliente` | painel do cliente em Application (PR11), **aberto para revisão** |
 | PR #30 — `pr10-progresso-cancelamento` | progresso por estágio e cancelamento (PR10), **mergeado** em 20/10 (`ca2256e`) |
 | PR #28 — `pr9-exportacao` | gravação da exportação em Excel e ZIP/CSV (PR9), **mergeado** em 20/10 (`def4393`) |
 | PR #27 — `pr8-saidas-exportacao` | preparação das 8 saídas da exportação (PR8), **mergeado** em 19/10 (`5f0b7e1`) |
@@ -24,7 +24,7 @@ Exportação; ScottPlot 5 depois de protótipo; CommunityToolkit.Mvvm;
 self-contained win-x64 portátil; Fluent). Ordem do §5: PR10 (progresso e
 cancelamento, sem UI), PR11 (painel do cliente em Application), depois a UI.
 
-## Painel do cliente (PR11, branch `pr11-painel-cliente`, 20/10/2026)
+## Painel do cliente (PR11, PR #31, 20/10/2026)
 
 - `PaineisDeCliente.Montar` e `ClientesDisponiveis` (Application): resumo,
   filtro por dia, volume, referências, janela, tabela e dados dos 2 gráficos,
