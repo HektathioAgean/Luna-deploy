@@ -6,8 +6,9 @@ Estado em 20/10/2026.
 
 | Item | Situação |
 |---|---|
-| `main` | até o PR9: exportação em Excel e ZIP/CSV (`def4393`) |
-| PR #30 — `pr10-progresso-cancelamento` | progresso por estágio e cancelamento (PR10), **aberto para revisão** |
+| `main` | até o PR10: progresso e cancelamento (`ca2256e`) |
+| PR #31 — `pr11-painel-cliente` | painel do cliente em Application (PR11), **aberto para revisão** |
+| PR #30 — `pr10-progresso-cancelamento` | progresso por estágio e cancelamento (PR10), **mergeado** em 20/10 (`ca2256e`) |
 | PR #28 — `pr9-exportacao` | gravação da exportação em Excel e ZIP/CSV (PR9), **mergeado** em 20/10 (`def4393`) |
 | PR #27 — `pr8-saidas-exportacao` | preparação das 8 saídas da exportação (PR8), **mergeado** em 19/10 (`5f0b7e1`) |
 | PR #26 — `pr7-memoria-leitura` | otimização da leitura (PR7), **mergeado** em 19/10 (`9ccd183`) |
@@ -23,7 +24,24 @@ Exportação; ScottPlot 5 depois de protótipo; CommunityToolkit.Mvvm;
 self-contained win-x64 portátil; Fluent). Ordem do §5: PR10 (progresso e
 cancelamento, sem UI), PR11 (painel do cliente em Application), depois a UI.
 
-## Progresso e cancelamento (PR10, PR #30, 20/10/2026)
+## Painel do cliente (PR11, PR #31, 20/10/2026)
+
+- `PaineisDeCliente.Montar` e `ClientesDisponiveis` (Application): resumo,
+  filtro por dia, volume, referências, janela, tabela e dados dos 2 gráficos,
+  como o `montar_painel_cliente`. Novos no Domain: `OrdenacaoNumpy` (ordem do
+  `sort_values` em datetime64, empates inclusive) e `Volumes` (número em
+  texto, `formatar_numero`, soma pairwise do numpy).
+- Referência no repo: `dotnet/tests/Luna.Integration.Tests/dados/painel/`
+  (`gerar_painel.py` → bases dirigidas + `esperado.json`, 104 painéis).
+- Fuzz fora do repo (modo `painel`; `gen_painel.py` usa o `escrever_base`
+  do repo; `comparar_painel.py`): 25.200 painéis iguais ao Python (8.862
+  cheios), 4 sementes; a única diferença é a intencional dos empates de minuto
+  nas aberturas (3.452 painéis com empate; detalhe em outra ordem em 2.178).
+- Custo: 12–17 ms e ~90 KB alocados por painel (base de 300 mil linhas e base
+  real); pico +3 MB.
+- 15 mutantes: 14 detectados, 1 equivalente (faixa inicial com 15 entregas).
+
+## Progresso e cancelamento (PR10, PR #30, mergeado em 20/10/2026)
 
 - `IProgress<EstagioProcessamento>` em `ProcessarBase.Executar` (estágios do
   Python, sem `base_detalhada`) e `IProgress<ProgressoExportacao>` no
@@ -163,7 +181,7 @@ Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.
 
 ```powershell
 .venv\Scripts\python -m pytest -q        # 98 passed
-dotnet test dotnet\Luna.sln              # 289 + 191 passed
+dotnet test dotnet\Luna.sln              # 289 + 302 passed
 ```
 
 O contrato só vale com as versões travadas (`tests/test_contrato.py` falha

@@ -21,3 +21,8 @@ dotnet/tests/Luna.Integration.Tests/dados/exportacao/*.json -text
 # Bases e avisos de referência do progresso (PR10).
 dotnet/tests/Luna.Integration.Tests/dados/progresso/*.csv -text
 dotnet/tests/Luna.Integration.Tests/dados/progresso/*.json -text
+
+# Bases e painéis de referência do painel do cliente (PR11).
+dotnet/tests/Luna.Integration.Tests/dados/painel/*.xlsx binary
+dotnet/tests/Luna.Integration.Tests/dados/painel/*.csv -text
+dotnet/tests/Luna.Integration.Tests/dados/painel/*.json -text
