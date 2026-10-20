@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using System.Xml;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
@@ -18,7 +19,7 @@ internal sealed partial class LeitorDeLinhas(
     IReadOnlyList<FormatosExcel.EstiloDeCelula> estilos,
     IReadOnlyList<string> strings)
 {
-    private sealed record CelulaLida(int Coluna, object? Valor, int Estilo);
+    private readonly record struct CelulaLida(int Coluna, object? Valor, int Estilo);
 
     public IEnumerable<IReadOnlyList<CelulaExcel>> Ler(OpenXmlPart planilha)
     {
@@ -99,6 +100,25 @@ internal sealed partial class LeitorDeLinhas(
 
     private static (int Linha, int Coluna) ParaTupla(string coordenada)
     {
+        // Caso comum (1 a 3 letras ASCII e até 9 dígitos ASCII, sem '$') sem
+        // alocar; o resto passa pela regex, com o mesmo resultado e erro.
+        int letras = 0, coluna = 0;
+        while (letras < coordenada.Length && letras < 4 && char.IsAsciiLetter(coordenada[letras]))
+            coluna = coluna * 26 + (char.ToUpperInvariant(coordenada[letras++]) - 'A' + 1);
+        int digitos = coordenada.Length - letras;
+        if (letras is >= 1 and <= 3 && digitos is >= 1 and <= 9)
+        {
+            int linha = 0;
+            for (int i = letras; i < coordenada.Length && linha >= 0; i++)
+                linha = char.IsAsciiDigit(coordenada[i]) ? linha * 10 + (coordenada[i] - '0') : -1;
+            if (linha >= 0)
+                return (linha, coluna);
+        }
+        return ParaTuplaPorRegex(coordenada);
+    }
+
+    private static (int Linha, int Coluna) ParaTuplaPorRegex(string coordenada)
+    {
         Match m = Coordenada().Match(coordenada);
         if (!m.Success)
             throw new BaseInvalidaException($"Invalid cell coordinates ({coordenada})");
@@ -108,25 +128,38 @@ internal sealed partial class LeitorDeLinhas(
         return (int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture), coluna);
     }
 
-    /// <summary>parse(): cada &lt;row&gt;, carregada sozinha, com o índice e as células.</summary>
+    /// <summary>
+    /// parse(): cada &lt;row&gt; com o índice e as células, lida em sequência
+    /// (XmlDaPlanilha), sem montar o DOM da linha.
+    /// </summary>
     private IEnumerable<(int Indice, List<CelulaLida> Celulas)> LinhasDoXml(OpenXmlPart planilha)
     {
         int contadorLinha = 0;
-        using var leitor = OpenXmlReader.Create(planilha);
-        leitor.Read();
-        while (!leitor.EOF)
+        using var leitor = XmlDaPlanilha.Abrir(planilha);
+        while (leitor.Read())
         {
-            if (leitor.ElementType != typeof(Row) || !leitor.IsStartElement)
-            {
-                leitor.Read();
+            if (!XmlDaPlanilha.E(leitor, "row"))
                 continue;
-            }
-            var linha = leitor.LoadCurrentElement()!;
-            contadorLinha = IndiceDaLinha(LeitorXlsx.Atributo(linha, "r"), contadorLinha);
+            contadorLinha = IndiceDaLinha(leitor.GetAttribute("r"), contadorLinha);
             int contadorColuna = 0;
             var celulas = new List<CelulaLida>();
-            foreach (var celula in linha.ChildElements.Where(e => e is Cell))
-                celulas.Add(LerCelula(celula, ref contadorColuna));
+            int profundidade = leitor.Depth;
+            if (!leitor.IsEmptyElement)
+            {
+                leitor.Read();
+                while (XmlDaPlanilha.ProximoFilho(leitor, profundidade))
+                {
+                    if (XmlDaPlanilha.E(leitor, "c"))
+                    {
+                        celulas.Add(LerCelula(leitor, ref contadorColuna));
+                        leitor.Read();
+                    }
+                    else
+                    {
+                        leitor.Skip();
+                    }
+                }
+            }
             yield return (contadorLinha, celulas);
         }
     }
@@ -144,19 +177,45 @@ internal sealed partial class LeitorDeLinhas(
     }
 
     /// <summary>parse_cell com data_only=True: a fórmula é ignorada, vale o valor em cache.</summary>
-    private CelulaLida LerCelula(OpenXmlElement celula, ref int contadorColuna)
+    // O leitor está no <c> e termina no último nó dele.
+    private CelulaLida LerCelula(XmlReader leitor, ref int contadorColuna)
     {
-        string tipo = LeitorXlsx.Atributo(celula, "t") ?? "n";
-        string? referencia = LeitorXlsx.Atributo(celula, "r");
-        string? atributoEstilo = LeitorXlsx.Atributo(celula, "s");
+        string tipo = leitor.GetAttribute("t") ?? "n";
+        string? referencia = leitor.GetAttribute("r");
+        string? atributoEstilo = leitor.GetAttribute("s");
         int estilo = string.IsNullOrEmpty(atributoEstilo) ? 0 : int.Parse(atributoEstilo, CultureInfo.InvariantCulture);
+
+        // Primeiro <v> e primeiro <is> entre os filhos da célula.
+        string? textoV = null, textoInline = null;
+        bool temV = false, temInline = false;
+        int profundidade = leitor.Depth;
+        if (!leitor.IsEmptyElement)
+        {
+            leitor.Read();
+            while (XmlDaPlanilha.ProximoFilho(leitor, profundidade))
+            {
+                if (!temV && XmlDaPlanilha.E(leitor, "v"))
+                {
+                    temV = true;
+                    textoV = XmlDaPlanilha.Texto(leitor);
+                    leitor.Read();
+                }
+                else if (!temInline && XmlDaPlanilha.E(leitor, "is"))
+                {
+                    temInline = true;
+                    textoInline = XmlDaPlanilha.Conteudo(leitor);
+                    leitor.Read();
+                }
+                else
+                {
+                    leitor.Skip();
+                }
+            }
+        }
 
         string? texto = null;
         if (tipo != "inlineStr")
-        {
-            var v = celula.ChildElements.FirstOrDefault(e => e is CellValue);
-            texto = string.IsNullOrEmpty(v?.InnerText) ? null : v.InnerText;
-        }
+            texto = string.IsNullOrEmpty(textoV) ? null : textoV;
 
         if (referencia is not null)
             contadorColuna = ParaTupla(referencia).Coluna;
@@ -177,8 +236,7 @@ internal sealed partial class LeitorDeLinhas(
         }
         else if (tipo == "inlineStr")
         {
-            var inline = celula.ChildElements.FirstOrDefault(e => e is InlineString);
-            valor = inline is null ? null : LeitorXlsx.Conteudo(inline);
+            valor = temInline ? textoInline : null;
         }
         return new CelulaLida(contadorColuna, valor, estilo);
     }

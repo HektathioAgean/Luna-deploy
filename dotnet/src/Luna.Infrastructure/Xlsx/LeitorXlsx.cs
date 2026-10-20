@@ -14,7 +14,7 @@ namespace Luna.Infrastructure.Xlsx;
 /// convertido e o number_format. Célula ausente: valor e formato nulos
 /// (EmptyCell); célula presente sem valor: valor nulo e o formato do estilo.
 /// </summary>
-internal sealed record CelulaExcel(object? Valor, string? FormatoNumero)
+internal readonly record struct CelulaExcel(object? Valor, string? FormatoNumero)
 {
     public static readonly CelulaExcel Vazia = new(null, null);
 }
@@ -33,8 +33,6 @@ internal sealed record CelulaExcel(object? Valor, string? FormatoNumero)
 /// </summary>
 public static partial class LeitorXlsx
 {
-    private const string Principal = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
-
     /// <exception cref="BaseInvalidaException">Arquivo ilegível ou célula inválida.</exception>
     public static TabelaBruta Ler(string caminho)
     {
@@ -199,32 +197,13 @@ public static partial class LeitorXlsx
         if (parte is null)
             return [];
         var strings = new List<string>();
-        using var leitor = OpenXmlReader.Create(parte);
-        leitor.Read();
-        while (!leitor.EOF)
+        using var leitor = XmlDaPlanilha.Abrir(parte);
+        while (leitor.Read())
         {
-            if (leitor.ElementType == typeof(SharedStringItem) && leitor.IsStartElement)
-                strings.Add(Conteudo(leitor.LoadCurrentElement()!).Replace("x005F_", ""));
-            else
-                leitor.Read();
+            if (XmlDaPlanilha.E(leitor, "si"))
+                strings.Add(XmlDaPlanilha.Conteudo(leitor).Replace("x005F_", ""));
         }
         return strings;
-    }
-
-    // Text.content do openpyxl: o <t> direto e o <t> de cada <r>.
-    internal static string Conteudo(OpenXmlElement elemento)
-    {
-        var partes = new List<string>();
-        var puro = elemento.ChildElements.FirstOrDefault(e => e.LocalName == "t" && e.NamespaceUri == Principal);
-        if (puro is not null)
-            partes.Add(puro.InnerText);
-        foreach (var trecho in elemento.ChildElements.Where(e => e.LocalName == "r" && e.NamespaceUri == Principal))
-        {
-            var texto = trecho.ChildElements.FirstOrDefault(e => e.LocalName == "t" && e.NamespaceUri == Principal);
-            if (texto is not null)
-                partes.Add(texto.InnerText);
-        }
-        return string.Concat(partes);
     }
 
     internal static string? Atributo(OpenXmlElement elemento, string nome)
