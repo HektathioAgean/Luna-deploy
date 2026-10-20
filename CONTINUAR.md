@@ -13,9 +13,23 @@ Estado em 19/10/2026.
 | Roteiros das fases | `LUNA_REVALIDACAO_POS_CORRECOES_PLAN.md`, `LUNA_MIGRACAO_CSHARP_FASE0_PLAN.md` |
 | Estado detalhado da migração | `dotnet/README.md` |
 
-Próximos passos combinados: otimização de memória/alocação da leitura (só
-com benchmark novo, antes e depois), exportação (Excel/ZIP) e, por último,
-a interface WPF.
+Próximos passos combinados: exportação (Excel/ZIP) e, por último, a
+interface WPF.
+
+## Otimização da leitura (PR7, branch `pr7-memoria-leitura`, 19/10/2026)
+
+- XLSX: planilha e strings compartilhadas pelo `XmlReader` do .NET
+  (`XmlDaPlanilha`), coordenada sem regex no caso comum, structs por célula.
+  Ler 4,74 → 2,05 s e 3,92 → 0,41 GB alocados.
+- CSV: decodificação em blocos durante a tokenização, linha como `string[]`
+  usada direto na tabela. Ler: pico 246 → 159 MB; processar: 426 → 349 MB.
+- Mesma saída: SHA-256 no benchmark e 20.000 jobs de fuzz idênticos byte a
+  byte à `main`; contra o Python, só as divergências documentadas.
+- Benchmark fora do repo: `Logistic Lab\luna-fuzz-harness\bench`
+  (`gerar_base.py` + `bench.sh`, tabela em `dotnet/README.md`).
+- Fora do escopo, medidos: pico do processamento dominado pela `TabelaBruta`
+  e pelos registros do domínio; ~1 GB alocado na leitura das datas em texto
+  do CSV. Candidatos a um próximo PR, só com benchmark.
 
 ## Retomada de 17–19/10/2026 (PC principal)
 

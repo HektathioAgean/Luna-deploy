@@ -57,16 +57,18 @@ CR/LF/CRLF, campo a mais/a menos, índice implícito), o cabeçalho do
 `read_csv` (`NULL`, `NA`, `#N/A`, `None`, vazio...). Mensagens iguais às do
 Python.
 
-**Memória (ressalva da revisão do PR6):** o CSV ainda é materializado por
-inteiro: o arquivo é lido em memória (`File.ReadAllBytes`), decodificado
-para uma `string` e tokenizado numa `TabelaBruta` com todas as linhas antes
-do processamento. Não há medição de pico de memória nem de tempo em base
-grande; **benchmark obrigatório antes da distribuição**.
+**Memória:** o CSV é lido em memória como bytes (`File.ReadAllBytes`) e
+decodificado em blocos de 64 KB durante a tokenização (PR7: a `string` do
+arquivo inteiro não existe mais); cada linha vira um `string[]` usado direto
+na `TabelaBruta`. A `TabelaBruta` continua com todas as linhas antes do
+processamento. Benchmark abaixo; **benchmark com base real continua
+obrigatório antes da distribuição**.
 
 PR6b — leitura de `.xlsx`/`.xlsm` (`LeitorXlsx`) com DocumentFormat.OpenXml
-3.5.1 (MIT), em streaming pelo `OpenXmlReader`: a planilha é lida uma linha
-por vez (`LoadCurrentElement` só da `<row>`) e as strings compartilhadas
-também; `workbook.xml` e `styles.xml`, pequenos, vão pelo DOM. Reproduz o
+3.5.1 (MIT): pacote, `workbook.xml`, `styles.xml` e `<dimension>` pelo SDK;
+a planilha e as strings compartilhadas em sequência pelo `XmlReader` do .NET
+(`XmlDaPlanilha`, PR7 — antes `LoadCurrentElement` por `<row>`), aceitando o
+namespace transitional e o strict como o SDK. Reproduz o
 `read_excel_safely` com o openpyxl 3.1.5 (read_only, data_only): primeira
 planilha na ordem do workbook (gráfico pulado, oculta conta), `iter_rows`
 com largura/altura do `<dimension>` e linhas ausentes no meio, `parse_cell`
@@ -79,6 +81,31 @@ coluna do pandas (inteiro com vazio vira float). O domínio passou a aceitar
 os tipos de célula do Excel na coluna de data como o pandas (`date` vira
 meia-noite; inteiro é lido como texto ISO; float, bool, hora e duração ficam
 inválidos; número na faixa de serial é rejeitado).
+
+### Benchmark da leitura otimizada (PR7, 19/10/2026)
+
+Ryzen 7 5700X, 32 GB. Base sintética nova de 300.000 linhas × 6 colunas e
+9.000 clientes (21,9 MB em CSV, 13,4 MB em XLSX, mesmo conteúdo; o gerador
+de 12/10 não foi versionado), então os números não se comparam com a tabela
+de 12/10. Cada
+medição em processo próprio; mediana de 3; pico = `PeakWorkingSet64` logo
+após a operação; alocado = `GC.GetTotalAllocatedBytes`. Só C#: antes (`main`
+`25421a8`) → depois.
+
+| Operação | Tempo | Pico | Alocado |
+|---|---|---|---|
+| Ler XLSX | 4,74 → 2,05 s | 148 → 140 MB | 3,92 → 0,41 GB |
+| Processar XLSX | 5,78 → 3,05 s | 309 → 307 MB | 4,15 → 0,69 GB |
+| Ler CSV | 0,36 → 0,23 s | 246 → 159 MB | 223 → 131 MB |
+| Processar CSV | 2,52 → 2,29 s | 426 → 349 MB | 1,19 → 1,10 GB |
+
+- Mesma saída antes e depois: SHA-256 das linhas lidas e das saídas do
+  processamento (KPIs, medianas, janelas); fuzz de 20.000 jobs (CSV e XLSX)
+  com saída idêntica byte a byte à da `main`.
+- O pico do XLSX e o do processamento continuam dominados pela
+  `TabelaBruta` e pelas listas de registros do domínio, fora deste PR.
+- O processamento do CSV ainda aloca ~1 GB no domínio (leitura das datas em
+  texto); fora deste PR.
 
 ### Benchmark (12/10/2026, mesma máquina, 300.000 linhas × 6 colunas, 9.000 clientes)
 
@@ -103,7 +130,8 @@ inclui o interpretador e o pandas). Tempo: média de 2 rodadas (C#) e 3
   pelas tabelas em memória. O CSV continua lido por inteiro.
 - A leitura do XLSX aloca muito (3,8 GB no total, coletados ao longo da
   leitura): `LoadCurrentElement` por linha, listas de atributos e regex de
-  coordenada por célula. Otimizar só com novo benchmark.
+  coordenada por célula. Otimizar só com novo benchmark. (Feito no PR7,
+  acima.)
 - Medido com uma base sintética; benchmark com base real continua
   obrigatório antes da distribuição.
 
