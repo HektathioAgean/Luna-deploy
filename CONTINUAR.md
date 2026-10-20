@@ -7,6 +7,7 @@ Estado em 20/10/2026.
 | Item | Situação |
 |---|---|
 | `main` | até o PR9: exportação em Excel e ZIP/CSV (`def4393`) |
+| PR #30 — `pr10-progresso-cancelamento` | progresso por estágio e cancelamento (PR10), **aberto para revisão** |
 | PR #28 — `pr9-exportacao` | gravação da exportação em Excel e ZIP/CSV (PR9), **mergeado** em 20/10 (`def4393`) |
 | PR #27 — `pr8-saidas-exportacao` | preparação das 8 saídas da exportação (PR8), **mergeado** em 19/10 (`5f0b7e1`) |
 | PR #26 — `pr7-memoria-leitura` | otimização da leitura (PR7), **mergeado** em 19/10 (`9ccd183`) |
@@ -22,7 +23,7 @@ Exportação; ScottPlot 5 depois de protótipo; CommunityToolkit.Mvvm;
 self-contained win-x64 portátil; Fluent). Ordem do §5: PR10 (progresso e
 cancelamento, sem UI), PR11 (painel do cliente em Application), depois a UI.
 
-## Progresso e cancelamento (PR10, branch `pr10-progresso-cancelamento`, 20/10/2026)
+## Progresso e cancelamento (PR10, PR #30, 20/10/2026)
 
 - `IProgress<EstagioProcessamento>` em `ProcessarBase.Executar` (estágios do
   Python, sem `base_detalhada`) e `IProgress<ProgressoExportacao>` no
