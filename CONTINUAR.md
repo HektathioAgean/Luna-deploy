@@ -1,25 +1,27 @@
 # Continuar a migração C# em outro computador
 
-Estado em 19/10/2026.
+Estado em 20/10/2026.
 
 ## Onde está cada coisa
 
 | Item | Situação |
 |---|---|
-| `main` | até o PR8: as 8 saídas da exportação preparadas (`5f0b7e1`) |
-| PR #28 — `pr9-exportacao` | gravação da exportação em Excel e ZIP/CSV (PR9), **aberto para revisão** |
+| `main` | até o PR9: exportação em Excel e ZIP/CSV (`def4393`) |
+| PR #28 — `pr9-exportacao` | gravação da exportação em Excel e ZIP/CSV (PR9), **mergeado** em 20/10 (`def4393`) |
 | PR #27 — `pr8-saidas-exportacao` | preparação das 8 saídas da exportação (PR8), **mergeado** em 19/10 (`5f0b7e1`) |
 | PR #26 — `pr7-memoria-leitura` | otimização da leitura (PR7), **mergeado** em 19/10 (`9ccd183`) |
 | PR #24 — `pr6c-csv-cr-sem-laco` | correções do CSV (laço com CR, ponto do fuso), **mergeado** (`a2e15c2`) |
 | PR #23 — `pr6b-leitura-xlsx` | leitura de XLSX/XLSM com DocumentFormat.OpenXml 3.5.1, **mergeado** (`b14bc18`) |
 | Referência matemática Python | tag `luna-py-ref-v1.1` (contrato em `tests/dados/contrato/`) |
-| Roteiros das fases | `LUNA_REVALIDACAO_POS_CORRECOES_PLAN.md`, `LUNA_MIGRACAO_CSHARP_FASE0_PLAN.md` |
+| Roteiros das fases | `LUNA_REVALIDACAO_POS_CORRECOES_PLAN.md`, `LUNA_MIGRACAO_CSHARP_FASE0_PLAN.md`, `LUNA_WPF_PLAN.md` |
 | Estado detalhado da migração | `dotnet/README.md` |
 
-Próximos passos combinados: revisão do PR9 e, por último, a interface WPF
-(só a pedido).
+Próximo passo: interface WPF, **só depois de o usuário decidir o escopo** em
+`LUNA_WPF_PLAN.md` (§4: MVP, biblioteca de gráficos, MVVM, publicação,
+visual). O plano propõe antes dois PRs sem UI: progresso por estágio e o
+painel do cliente em Application, com paridade contra o Python.
 
-## Gravação da exportação (PR9, PR #28, 20/10/2026)
+## Gravação da exportação (PR9, PR #28, mergeado em 20/10/2026)
 
 - `Exportador.Exportar(resultado, "xlsx"|"zip", destino, cancelamento)`:
   temporário único na pasta de destino, publicação só no fim, temporário
@@ -101,6 +103,9 @@ Próximos passos combinados: revisão do PR9 e, por último, a interface WPF
   `fillna` de `_completar_com_formatos`. Resultado: `invalid literal for
   int()`, números de linha errados ou `cannot reindex on an axis with
   duplicate labels`. O C# descarta o índice e numera por posição.
+- Validado antes do merge do PR9 (head `565b59f`, merge `def4393`), em 20/10:
+  289 + 171 .NET, 98 Python, 37 do contrato, 33 hashes; `src/`/`tests/` =
+  tag `luna-py-ref-v1.1`; PR sem conflito.
 - Validado na `main` depois do merge do PR7 (`9ccd183`), em 19/10: 289 + 65
   .NET, 98 Python, 33 hashes do contrato; `src/`/`tests/` = tag
   `luna-py-ref-v1.1`.
