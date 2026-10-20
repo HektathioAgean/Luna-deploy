@@ -10,8 +10,11 @@ substituição ser aprovada.
 | `src/Luna.Domain` | regras e funções matemáticas puras | nenhuma (só BCL) |
 | `src/Luna.Application` | caso de uso `ProcessarBase`, `ParametrosProcessamento`, porta `ILeitorDeBase`, `SaidasExportacao` (as 8 tabelas da exportação), `PaineisDeCliente` (painel do cliente) | Domain |
 | `src/Luna.Infrastructure` | `CarregadorDeArquivo`, leitura de CSV e de XLSX/XLSM, `Exportador` (gravação em Excel e ZIP/CSV) | Application, DocumentFormat.OpenXml 3.5.1 (MIT) |
+| `src/Luna.Apresentacao` | ViewModels da interface (MVVM), sem WPF: Base, Validação, Processamento, mensagens de erro | Application, CommunityToolkit.Mvvm 8.4.2 (MIT) |
+| `src/Luna.Desktop` | aplicativo Windows: WPF .NET 10, tema Fluent do sistema, navegação lateral | Apresentacao, Infrastructure |
 | `tests/Luna.Domain.Tests` | testes de unidade e paridade com o contrato | xUnit |
 | `tests/Luna.Integration.Tests` | leitura de arquivo e fluxo ponta a ponta contra o Python | xUnit |
+| `tests/Luna.Apresentacao.Tests` | ViewModels sem WPF: estados, progresso, cancelamento, erros | xUnit |
 
 ## Estado
 
@@ -341,7 +344,32 @@ SDK fixado em `global.json` (10.0.401, aceita feature bands mais novas).
 
 ```powershell
 dotnet test dotnet/Luna.sln
+dotnet run --project dotnet/src/Luna.Desktop        # aplicativo Windows (PR12)
 ```
+
+### Luna.Desktop (PR12, esqueleto)
+
+Abas Base, Validação e Processamento, como na tela atual (`interface/`):
+escolha da base local (CSV, XLSX, XLSM, pelo diálogo do Windows ou pelo
+caminho), os mesmos parâmetros e padrões do motor, processamento fora do
+thread da interface (`Task.Run`) com os estágios do `IProgress` e
+cancelamento; laudo do esquema, sugestões, mapeamento, avisos de leitura e
+inconsistências por motivo; os 8 KPIs, resumo, parâmetros usados e janelas.
+Erro mostra a mensagem do motor (ou um texto genérico), nunca a pilha. Só um
+resultado fica em memória: processar de novo solta o anterior antes.
+
+A barra de ação (Processar, Cancelar, estado, estágios e erro) fica na janela,
+abaixo de qualquer seção, ligada ao `BaseViewModel`: dá para processar,
+acompanhar e cancelar de qualquer aba. Cores de estado vêm dos pincéis do
+Fluent (`SystemFillColorCritical/Success/CautionBrush`) e acompanham o tema.
+`--tema=claro|escuro` força o tema só no processo (testes visuais), sem mexer
+no Windows. Avisos de progresso não vazam para a execução seguinte: o aviso
+(`Dispatcher.InvokeAsync`) e a continuação do `await` vão para a mesma fila,
+na mesma prioridade, e o comando só aceita outra execução depois do fim.
+
+Sem navegador, servidor, Python nem administrador. Ainda não: Resultados,
+Exportação e Painel do Cliente na tela (PR13/PR14), publicação portátil
+(PR15). O Luna Python continua independente.
 
 Os testes acham `tests/dados/contrato/` subindo a partir da pasta de saída e
 conferem o SHA-256 de cada arquivo contra o `MANIFEST.json`.

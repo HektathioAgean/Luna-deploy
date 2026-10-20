@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Aplicativo Windows (WPF, tema Fluent). Regras e textos de tela ficam no Luna.Apresentacao. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyTitle>Luna</AssemblyTitle>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Luna.Apresentacao\Luna.Apresentacao.csproj" />
+    <ProjectReference Include="..\Luna.Infrastructure\Luna.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
