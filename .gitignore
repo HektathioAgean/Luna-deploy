@@ -180,3 +180,5 @@ exports/
 !dotnet/tests/Luna.Integration.Tests/dados/xlsx/*.csv
 !dotnet/tests/Luna.Integration.Tests/dados/saidas/*.xlsx
 !dotnet/tests/Luna.Integration.Tests/dados/saidas/*.csv
+!dotnet/tests/Luna.Integration.Tests/dados/exportacao/*.xlsx
+!dotnet/tests/Luna.Integration.Tests/dados/exportacao/*.csv

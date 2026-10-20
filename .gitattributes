@@ -12,3 +12,8 @@ dotnet/tests/Luna.Integration.Tests/dados/xlsx/*.json -text
 dotnet/tests/Luna.Integration.Tests/dados/saidas/*.xlsx binary
 dotnet/tests/Luna.Integration.Tests/dados/saidas/*.csv -text
 dotnet/tests/Luna.Integration.Tests/dados/saidas/*.json -text
+
+# Bases especiais e conteúdo de referência da gravação da exportação (PR9).
+dotnet/tests/Luna.Integration.Tests/dados/exportacao/*.xlsx binary
+dotnet/tests/Luna.Integration.Tests/dados/exportacao/*.csv -text
+dotnet/tests/Luna.Integration.Tests/dados/exportacao/*.json -text
