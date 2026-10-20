@@ -61,8 +61,7 @@ Python.
 decodificado em blocos de 64 KB durante a tokenização (PR7: a `string` do
 arquivo inteiro não existe mais); cada linha vira um `string[]` usado direto
 na `TabelaBruta`. A `TabelaBruta` continua com todas as linhas antes do
-processamento. Benchmark abaixo; **benchmark com base real continua
-obrigatório antes da distribuição**.
+processamento. Benchmarks abaixo, inclusive com uma base real (PR9).
 
 PR6b — leitura de `.xlsx`/`.xlsm` (`LeitorXlsx`) com DocumentFormat.OpenXml
 3.5.1 (MIT): pacote, `workbook.xml`, `styles.xml` e `<dimension>` pelo SDK;
@@ -163,6 +162,31 @@ de formato inválido e pasta inexistente.
   (`CancellationToken`) ou alvo aberto em outro programa, o temporário é
   apagado e o arquivo anterior fica como estava.
 
+### Base real (20/10/2026)
+
+Uma base operacional em XLSX (22,7 MB; 133.133 linhas × 45 colunas; 6.909
+clientes), lida no lugar, fora do repositório. Só agregados ficam
+registrados aqui: nenhum código, nome ou valor.
+
+- **Igual ao Python:** as 8 tabelas da exportação, comparadas registro a
+  registro em fluxo (350.946 registros: colunas, dtypes, origem de cada
+  linha, valores e ordem), mais os KPIs; e o conteúdo exportado (os 8 CSVs
+  idênticos byte a byte; no XLSX, cada célula das 8 abas com o mesmo tipo,
+  valor e formato). Linhas: 133.133 lidas, 70.862 válidas, 5.461
+  inconsistentes, 56.768 expurgadas, 42 anomalias.
+- **Benchmark** (mesma máquina; C# mediana de 3, Python 1 rodada; pico do
+  processo inteiro):
+
+| Operação | C# | Python |
+|---|---|---|
+| Ler | 5,5 s · pico 276 MB · 894 MB alocados | — |
+| Processar | 6,0 s · pico 384 MB · 1,05 GB alocados | 49,6 s |
+| Exportar ZIP | 5,6 s · pico 391 MB · +1,8 GB alocados | 67,3 s · pico 759 MB |
+| Exportar XLSX | 15,6 s · pico 390 MB · +3,9 GB alocados | 283,9 s · pico 759 MB |
+
+  Arquivos: ZIP 41,2 MB (Python 41,4 MB) e XLSX 102,5 MB (Python 102,3 MB).
+  O tempo de processar do Python é o total menos a exportação.
+
 ### Benchmark da exportação (PR9, 20/10/2026)
 
 Mesma máquina e base de 300.000 linhas do PR7/PR8, processo próprio por
@@ -239,8 +263,8 @@ inclui o interpretador e o pandas). Tempo: média de 2 rodadas (C#) e 3
   leitura): `LoadCurrentElement` por linha, listas de atributos e regex de
   coordenada por célula. Otimizar só com novo benchmark. (Feito no PR7,
   acima.)
-- Medido com uma base sintética; benchmark com base real continua
-  obrigatório antes da distribuição.
+- Medido com uma base sintética; a base real foi medida no PR9 (ver
+  "Base real", acima).
 
 ## Equivalência Unicode (resolvida no PR5)
 

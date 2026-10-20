@@ -35,8 +35,14 @@ Próximos passos combinados: revisão do PR9 e, por último, a interface WPF
 - Base de 300 mil linhas: conteúdo das 8 saídas igual ao Python (CSV byte a
   byte; XLSX célula a célula). Exportar: ZIP 3,2–3,5 s, XLSX 11,0–11,3 s, pico
   +1–3 MB sobre o processamento (Python: 10–31 s e 175–206 s).
-- Decisões a confirmar na revisão: `=` como texto (não fórmula) e `\r`
-  preservado (`&#xD;`) no Excel; no CSV o valor sai cru como no Python
+- Base real `data (1).xlsx` (fica em `Downloads`, fora do repo; 133.133
+  linhas × 45 colunas): 8 saídas, KPIs e exportação iguais ao Python
+  (350.946 registros comparados em fluxo pelo modo `saidas_linhas` do
+  harness + `comparar_saidas_linhas.py`). Processar 6,0 s, exportar ZIP
+  5,6 s, XLSX 15,6 s (Python: 49,6 s, 67,3 s e 283,9 s). Agregados em
+  `dotnet/README.md`.
+- Decisões definitivas (revisão de 20/10): `=` como texto (não fórmula) e
+  `\r` preservado (`&#xD;`) no Excel; no CSV o valor sai cru como no Python
   (risco de fórmula ao abrir o CSV direto no Excel, documentado).
 
 ## Saídas da exportação (PR8, PR #27, mergeado em 19/10/2026)
