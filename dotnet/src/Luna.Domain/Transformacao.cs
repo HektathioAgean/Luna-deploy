@@ -6,10 +6,15 @@ namespace Luna.Domain;
 /// </summary>
 public sealed record RegistroBruto(string? CodCliente, object? ChegouEm, object? FinalizadaEm);
 
-/// <summary>Registros classificados, na ordem de entrada, e avisos de leitura das datas.</summary>
+/// <summary>
+/// Registros classificados, na ordem de entrada, avisos de leitura das datas
+/// e o fuso de cada coluna de data (nulo = sem fuso; ver <see cref="DatasConvertidas"/>).
+/// </summary>
 public sealed record ResultadoTransformacao(
     IReadOnlyList<AtendimentoClassificado> Registros,
-    IReadOnlyList<string> Avisos);
+    IReadOnlyList<string> Avisos,
+    TimeSpan? FusoChegou = null,
+    TimeSpan? FusoFinalizada = null);
 
 /// <summary>
 /// transform_base + aplicar_regras_operacionais (src/data_transformer.py):
@@ -37,6 +42,6 @@ public static class Transformacao
                     datas.FormatoDivergente[i]),
                 regras))
             .ToList();
-        return new ResultadoTransformacao(classificados, datas.Avisos);
+        return new ResultadoTransformacao(classificados, datas.Avisos, datas.FusoChegou, datas.FusoFinalizada);
     }
 }

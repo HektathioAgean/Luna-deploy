@@ -6,17 +6,38 @@ Estado em 19/10/2026.
 
 | Item | Situação |
 |---|---|
-| `main` | até o PR6b: importação de CSV e XLSX/XLSM, fluxo ponta a ponta (`b14bc18`) |
+| `main` | até o PR7: leitura de XLSX/CSV com menos memória e alocação (`9ccd183`) |
+| PR #27 — `pr8-saidas-exportacao` | preparação das 8 saídas da exportação (PR8), **aberto para revisão** |
+| PR #26 — `pr7-memoria-leitura` | otimização da leitura (PR7), **mergeado** em 19/10 (`9ccd183`) |
 | PR #24 — `pr6c-csv-cr-sem-laco` | correções do CSV (laço com CR, ponto do fuso), **mergeado** (`a2e15c2`) |
 | PR #23 — `pr6b-leitura-xlsx` | leitura de XLSX/XLSM com DocumentFormat.OpenXml 3.5.1, **mergeado** (`b14bc18`) |
 | Referência matemática Python | tag `luna-py-ref-v1.1` (contrato em `tests/dados/contrato/`) |
 | Roteiros das fases | `LUNA_REVALIDACAO_POS_CORRECOES_PLAN.md`, `LUNA_MIGRACAO_CSHARP_FASE0_PLAN.md` |
 | Estado detalhado da migração | `dotnet/README.md` |
 
-Próximos passos combinados: exportação (Excel/ZIP) e, por último, a
-interface WPF.
+Próximos passos combinados: gravação da exportação (Excel/ZIP, PR9, a
+planejar depois da aprovação do PR8) e, por último, a interface WPF.
 
-## Otimização da leitura (PR7, branch `pr7-memoria-leitura`, 19/10/2026)
+## Saídas da exportação (PR8, PR #27, 19/10/2026)
+
+- `SaidasExportacao` monta as 8 tabelas de `SAIDAS` como visões sobre a
+  `TabelaBruta` e os registros classificados (sem cópia), no primeiro acesso a
+  `ResultadoProcessamento.Saidas`. Colunas, dtypes, linhas, ordem e origem
+  de cada linha iguais aos DataFrames de `exportar()`. Detalhes e benchmark em
+  `dotnet/README.md`.
+- Referência no repo: `dotnet/tests/Luna.Integration.Tests/dados/saidas/`
+  (`gerar_saidas.py` → `esperado.json`, 17 casos).
+- Fuzz fora do repo (`luna-fuzz-harness`, modo `saidas`; `gen_saidas.py` é o
+  gerador dirigido, `para_saidas.py` converte os jobs de `gen_csv`/`gen_xlsx`):
+  11.992 jobs, só as duas divergências intencionais (CR + espaço, índice
+  implícito). 14 mutantes, 14 detectados.
+- Medido no Python para o PR9 (gravação): o Excel do motor **falha** com base
+  com fuso (`TypeError: Excel does not support timezones`, do openpyxl) e o
+  ZIP grava; cada CSV do ZIP tem BOM e fim de linha `\r\n` (o `os.linesep`
+  do Windows); `pd.DataFrame()` vira só `\r\n`; aba de tabela vazia sai sem
+  cabeçalho no Excel. Decidir com o usuário antes de reproduzir a falha do fuso.
+
+## Otimização da leitura (PR7, PR #26, mergeado em 19/10/2026)
 
 - XLSX: planilha e strings compartilhadas pelo `XmlReader` do .NET
   (`XmlDaPlanilha`), coordenada sem regex no caso comum, structs por célula.
@@ -53,6 +74,9 @@ interface WPF.
   `fillna` de `_completar_com_formatos`. Resultado: `invalid literal for
   int()`, números de linha errados ou `cannot reindex on an axis with
   duplicate labels`. O C# descarta o índice e numera por posição.
+- Validado na `main` depois do merge do PR7 (`9ccd183`), em 19/10: 289 + 65
+  .NET, 98 Python, 33 hashes do contrato; `src/`/`tests/` = tag
+  `luna-py-ref-v1.1`.
 - Validado no conteúdo final da `main` (merge `c627f6d`, mesma árvore de
   `b14bc18`), em 18/10: 289 + 62 .NET, 98 Python. Em 17/10: 33 hashes do
   contrato; `src/`/`tests/` = tag `luna-py-ref-v1.1`.
@@ -92,7 +116,7 @@ Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.
 
 ```powershell
 .venv\Scripts\python -m pytest -q        # 98 passed
-dotnet test dotnet\Luna.sln              # 289 + 62 passed
+dotnet test dotnet\Luna.sln              # 289 + 118 passed
 ```
 
 O contrato só vale com as versões travadas (`tests/test_contrato.py` falha

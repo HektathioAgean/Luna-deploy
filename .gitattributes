@@ -7,3 +7,8 @@ dotnet/tests/Luna.Integration.Tests/dados/xlsx/*.xlsx binary
 dotnet/tests/Luna.Integration.Tests/dados/xlsx/*.xlsm binary
 dotnet/tests/Luna.Integration.Tests/dados/xlsx/*.csv -text
 dotnet/tests/Luna.Integration.Tests/dados/xlsx/*.json -text
+
+# Bases e saídas de referência das tabelas de exportação (PR8): bytes exatos.
+dotnet/tests/Luna.Integration.Tests/dados/saidas/*.xlsx binary
+dotnet/tests/Luna.Integration.Tests/dados/saidas/*.csv -text
+dotnet/tests/Luna.Integration.Tests/dados/saidas/*.json -text

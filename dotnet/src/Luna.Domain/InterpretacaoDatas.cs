@@ -13,13 +13,17 @@ public sealed class FormatoDeDataException(string mensagem) : Exception(mensagem
 /// <summary>
 /// Datas das duas colunas, as linhas válidas só na convenção dd/mm ou mm/dd
 /// que perdeu e avisos de leitura (linhas tratadas de forma diferente do
-/// motor Python, de propósito).
+/// motor Python, de propósito). <paramref name="FusoChegou"/> e
+/// <paramref name="FusoFinalizada"/>: o offset único de cada coluna lida com
+/// fuso (o tz do datetime64 do pandas); nulo = coluna sem fuso.
 /// </summary>
 public sealed record DatasConvertidas(
     IReadOnlyList<DateTimeOffset?> ChegouEm,
     IReadOnlyList<DateTimeOffset?> FinalizadaEm,
     IReadOnlyList<bool> FormatoDivergente,
-    IReadOnlyList<string> Avisos);
+    IReadOnlyList<string> Avisos,
+    TimeSpan? FusoChegou = null,
+    TimeSpan? FusoFinalizada = null);
 
 /// <summary>
 /// Interpretação conjunta de Chegou_em e Finalizada_em
@@ -91,7 +95,8 @@ public static partial class InterpretacaoDatas
         bool[] validoBr = Plausiveis(br.Item1, br.Item2);
         // Base toda válida em dd/mm: mm/dd não tem como ganhar.
         if (validoBr.All(v => v))
-            return new DatasConvertidas(br.Item1, br.Item2, new bool[chegou.Count], avisos);
+            return new DatasConvertidas(br.Item1, br.Item2, new bool[chegou.Count], avisos,
+                isoChegou.Fuso, isoFinalizada.Fuso);
 
         var us = (Completar(chegou, isoChegou.Valores, ParserDataBarra.FormatosUs),
                   Completar(finalizada, isoFinalizada.Valores, ParserDataBarra.FormatosUs));
@@ -102,11 +107,13 @@ public static partial class InterpretacaoDatas
         bool[] validoEscolhida = usVence ? validoUs : validoBr;
         bool[] validoOutra = usVence ? validoBr : validoUs;
         bool[] divergente = validoEscolhida.Select((v, i) => !v && validoOutra[i]).ToArray();
-        return new DatasConvertidas(escolhida.Item1, escolhida.Item2, divergente, avisos);
+        return new DatasConvertidas(escolhida.Item1, escolhida.Item2, divergente, avisos,
+            isoChegou.Fuso, isoFinalizada.Fuso);
     }
 
-    private sealed record ColunaIso(DateTimeOffset?[] Valores, bool ComFuso)
+    private sealed record ColunaIso(DateTimeOffset?[] Valores, TimeSpan? Fuso)
     {
+        public bool ComFuso => Fuso is not null;
         public bool TemValor => Valores.Any(v => v is not null);
     }
 
@@ -159,7 +166,8 @@ public static partial class InterpretacaoDatas
                 $"A coluna {nome} tem fuso fora da faixa de -14:00 a +14:00 nas linhas {LinhasDoArquivo(foraDaFaixa)}. " +
                 "O Luna nao representa esse fuso; corrija o fuso dessas linhas antes de processar.");
         }
-        return new ColunaIso(lidas.Select(l => l?.ParaDateTimeOffset()).ToArray(), offsets.Count == 1);
+        return new ColunaIso(lidas.Select(l => l?.ParaDateTimeOffset()).ToArray(),
+            offsets.Count == 1 ? TimeSpan.FromMinutes(offsets.Single()) : null);
     }
 
     /// <summary>

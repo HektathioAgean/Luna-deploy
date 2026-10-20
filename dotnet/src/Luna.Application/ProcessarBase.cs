@@ -5,6 +5,8 @@ namespace Luna.Application;
 /// <summary>
 /// Tudo que o processamento produz. Com esquema inválido, só a leitura e o
 /// relatório vêm preenchidos (o Python devolve as tabelas vazias e kpis {}).
+/// O resultado mantém a base lida viva enquanto existir, como o
+/// <c>base_padronizada</c> do Python: é dela que saem as tabelas da exportação.
 /// </summary>
 public sealed record ResultadoProcessamento(
     ParametrosProcessamento Parametros,
@@ -18,7 +20,22 @@ public sealed record ResultadoProcessamento(
     IReadOnlyList<TempoCliente> TemposPorCliente,
     IReadOnlyList<JanelaCliente> Janelas,
     Kpis? Kpis,
-    IReadOnlyList<string> Avisos);
+    IReadOnlyList<string> Avisos)
+{
+    internal TabelaBruta? Bruta { get; init; }
+    internal ResultadoTransformacao? Transformacao { get; init; }
+
+    private IReadOnlyList<TabelaSaida>? _saidas;
+
+    /// <summary>
+    /// As oito tabelas da exportação, na ordem do motor (<see cref="SaidasExportacao"/>).
+    /// Montadas no primeiro acesso: quem só processa não paga a inferência de
+    /// tipos sobre a base inteira.
+    /// </summary>
+    public IReadOnlyList<TabelaSaida> Saidas => _saidas ??= SaidasExportacao.Montar(
+        Bruta ?? throw new InvalidOperationException("Resultado sem a base lida."),
+        ColunasPadronizadas, Transformacao, TemposPorCliente, Janelas);
+}
 
 /// <summary>
 /// Caso de uso "processar a base" (src/pipeline.py, _executar): leitura,
@@ -41,7 +58,10 @@ public sealed class ProcessarBase(ILeitorDeBase leitor)
         var esquema = EsquemaColunas.Analisar(colunas);
         if (!esquema.Valido)
             return new ResultadoProcessamento(parametros, bruta.Linhas.Count, colunas, esquema,
-                [], [], [], [], [], [], null, []);
+                [], [], [], [], [], [], null, [])
+            {
+                Bruta = bruta,
+            };
 
         int cliente = IndiceDe(colunas, "Cod_Cliente");
         int chegou = IndiceDe(colunas, "Chegou_em");
@@ -81,7 +101,11 @@ public sealed class ProcessarBase(ILeitorDeBase leitor)
             parametros, bruta.Linhas.Count, colunas, esquema,
             porClasse[Classe.Inconsistente].ToList(), processados,
             porClasse[Classe.Expurgado].ToList(), porClasse[Classe.Anomalia].ToList(),
-            tempos, janelas, kpis, transformacao.Avisos);
+            tempos, janelas, kpis, transformacao.Avisos)
+        {
+            Bruta = bruta,
+            Transformacao = transformacao,
+        };
     }
 
     private static int IndiceDe(IReadOnlyList<string> colunas, string nome)
