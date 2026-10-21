@@ -484,7 +484,7 @@ mil linhas até o fim (2,8 s). Os botões do `MessageBox` aparecem para a UI
 Automation como `Pane` sem `Invoke`: o roteiro responde com `WM_COMMAND`
 (IDYES/IDNO) na caixa, sem mouse nem foco.
 
-### Painel do Cliente (PR14, em revisão)
+### Painel do Cliente (PR14; mergeado em 21/10/2026, `2816e7f`)
 
 Seção nova entre Resultados e Exportação, como a aba `aba_cliente.js`. As
 contas são as do `PaineisDeCliente` (PR11, sem mudança); a seção só tem estado

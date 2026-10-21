@@ -1,13 +1,13 @@
 # Continuar a migração C# em outro computador
 
-Estado em 20/10/2026.
+Estado em 21/10/2026.
 
 ## Onde está cada coisa
 
 | Item | Situação |
 |---|---|
-| `main` | até o PR13: MVP do `Luna.Desktop` encerrado (`ef8c800`) |
-| `pr14-painel-cliente` | Painel do Cliente no WPF com ScottPlot 5 (PR14), **aberto para revisão** |
+| `main` | até o PR14: MVP do `Luna.Desktop` + Painel do Cliente (`2816e7f`) |
+| PR #34 — `pr14-painel-cliente` | Painel do Cliente no WPF com ScottPlot 5 (PR14), **mergeado** em 21/10 (`2816e7f`) |
 | PR #33 — `pr13-resultados-exportacao` | Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP, **mergeado** em 20/10 (`ef8c800`) |
 | PR #32 — `pr12-desktop-esqueleto` | `Luna.Desktop` (WPF): Base, Validação, Processamento, **mergeado** em 20/10 (`21cf04a`) |
 | PR #31 — `pr11-painel-cliente` | painel do cliente em Application (PR11), **mergeado** em 20/10 (`acc331d`) |
@@ -23,11 +23,12 @@ Estado em 20/10/2026.
 
 Próximo passo: o **MVP do desktop está encerrado** (Base, Validação,
 Processamento, Resultados e Exportação; PR10–PR13 mergeados). O protótipo
-ScottPlot 5 (§4.2 do `LUNA_WPF_PLAN.md`) foi aprovado em 20/10; o PR14
-(Painel do Cliente, branch `pr14-painel-cliente`) está em revisão; depois vem
-o PR15 (publicação portátil).
+ScottPlot 5 (§4.2 do `LUNA_WPF_PLAN.md`) foi aprovado em 20/10 e o PR14
+(Painel do Cliente) foi mergeado em 21/10 (`2816e7f`). Próximo: PR15
+(publicação portátil self-contained win-x64, com `THIRD-PARTY-NOTICES` para as
+licenças MIT e zlib/GLFW que o ScottPlot trouxe).
 
-## Painel do Cliente (PR14, 20/10/2026)
+## Painel do Cliente (PR14, PR #34, mergeado em 21/10/2026)
 
 - `PainelClienteViewModel` + `TelaDoPainel` (Apresentacao) sobre o
   `PaineisDeCliente` do PR11, sem mudança no Domain/Application; gráficos
