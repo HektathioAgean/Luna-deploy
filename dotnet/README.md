@@ -368,10 +368,10 @@ no Windows. Avisos de progresso não vazam para a execução seguinte: o aviso
 na mesma prioridade, e o comando só aceita outra execução depois do fim.
 
 Sem navegador, servidor, Python nem administrador. Ainda não: Painel do
-Cliente na tela (PR14), publicação portátil (PR15). O Luna Python continua
+Cliente na tela (PR14, em desenvolvimento), publicação portátil (PR15). O Luna Python continua
 independente.
 
-### Resultados e Exportação (PR13, fecha o MVP)
+### Resultados e Exportação (PR13, fecha o MVP; mergeado em 20/10/2026, `ef8c800`)
 
 **Resultados:** uma aba por saída de `ResultadoProcessamento.Saidas`, na
 ordem do motor (Base Bruta, Base Validada, Base Detalhada, Inconsistências,
@@ -437,8 +437,9 @@ solução incluindo WPF com zero erros e avisos. Os nove casos novos cobrem
 colisão na publicação em Excel/ZIP, arquivo concorrente aberto,
 compatibilidade do comportamento padrão e a mensagem de colisão.
 As esperas coordenadas dos testes receberam timeout e liberação em
-`finally`. As medições de UI e desempenho abaixo são as anteriores à
-correção; não foram repetidas nesta revisão.
+`finally`. Hashes do contrato 33/33 + 4/4. A fumaça (`smoke.ps1`) passou de
+novo, 35/35 nos temas claro e escuro, no build de `f09b26b`; as medições de
+virtualização e desempenho abaixo são as anteriores à correção.
 
 **Virtualização medida (20/10/2026)** no `Luna.Desktop` real, por um
 programa fora do repo (`luna-fuzz-harness/desktop/virtualizacao`): por aba,
