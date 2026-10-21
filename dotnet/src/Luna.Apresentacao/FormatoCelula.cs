@@ -49,7 +49,7 @@ public static class FormatoCelula
     }
 
     // Number::toString do ECMAScript a partir dos menores dígitos que voltam ao mesmo double ("R").
-    private static string TextoJs(double x)
+    internal static string TextoJs(double x)
     {
         if (x == 0)
             return "0";

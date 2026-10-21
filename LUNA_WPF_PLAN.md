@@ -1,7 +1,8 @@
 # Luna em WPF: planejamento (Fase 3)
 
 Estado: **escopo aprovado em 20/10/2026 (§4)**; implementação em PRs
-pequenos (§5), começando pelo PR10, sem UI. Base: Fase 3 do
+pequenos (§5). **MVP concluído** (PR13 mergeado em 20/10, `ef8c800`);
+protótipo ScottPlot 5 aprovado em 20/10; PR14 em revisão. Base: Fase 3 do
 `LUNA_MIGRACAO_CSHARP_FASE0_PLAN.md` e a interface atual (`luna.py` +
 `interface/*.js`), com o motor C# validado até o PR9 (leitura, processamento,
 8 saídas e exportação iguais ao Python, inclusive numa base real de 133 mil
@@ -65,7 +66,12 @@ do Python em `ProcessarBase` e progresso por aba no `Exportador`.
 2. **Gráficos:** ScottPlot 5 para WPF (licença MIT). Antes do PR14, um
    protótipo valida: dois eixos Y, zoom, deslocamento, barras, dispersão e a
    faixa da janela circular (inclusive a que cruza a meia-noite). Nenhuma
-   dependência gráfica entra antes disso.
+   dependência gráfica entra antes disso. **Protótipo aprovado em 20/10/2026**
+   (`luna-fuzz-harness/desktop/scottplot/RELATORIO.md`, 150 verificações OK):
+   `ScottPlot.WPF` 5.1.59; zoom e deslocamento só no eixo X, eixos Y fixos a
+   partir de zero; TFM `net10.0-windows10.0.19041.0` para os assets modernos
+   do `SkiaSharp.Views.WPF` (sem suprimir NU1701); mediana `#00866A` só no
+   tema claro.
 3. **Arquitetura:** WPF .NET 10 com CommunityToolkit.Mvvm; XAML só para
    apresentação; regras de negócio em Domain/Application, fora da UI.
 4. **Publicação:** self-contained win-x64, primeiro portátil em pasta/ZIP:
@@ -86,9 +92,9 @@ do Python em `ProcessarBase` e progresso por aba no `Exportador`.
 | PR10 | progresso por estágio em `ProcessarBase` e no `Exportador`, cancelamento (mergeado, #30) | testes de ordem dos estágios contra o Python; cancelamento |
 | PR11 | painel do cliente em Application (§2), sem UI (mergeado, #31) | paridade com `montar_painel_cliente` do Python (fixtures + fuzz) |
 | PR12 | `Luna.Desktop` esqueleto: janela, abas Base/Validação/Processamento, processar com progresso e cancelamento (mergeado, #32) | ViewModels testados; fumaça por UI Automation nos temas claro e escuro |
-| PR13 | aba Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP (em revisão) | fumaça com a base real (133 mil linhas) |
-| — | protótipo ScottPlot 5 (§4.2), fora do produto | dois eixos, zoom, deslocamento, barras, dispersão, janela circular |
-| PR14 | Painel do Cliente com ScottPlot 5 (entrega seguinte) | comparação visual com a versão web |
+| PR13 | aba Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP (mergeado, #33) | fumaça com a base real (133 mil linhas) |
+| — | protótipo ScottPlot 5 (§4.2), fora do produto (aprovado em 20/10) | dois eixos, zoom, deslocamento, barras, dispersão, janela circular |
+| PR14 | Painel do Cliente com ScottPlot 5 (em revisão) | comparação visual com a versão web |
 | PR15 | publicação self-contained win-x64 portátil; instalador por usuário depois | máquina limpa, sem admin |
 
 Cada PR: aberto para revisão, sem merge automático; Python, contrato e

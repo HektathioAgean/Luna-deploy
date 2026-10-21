@@ -6,8 +6,9 @@ Estado em 20/10/2026.
 
 | Item | Situação |
 |---|---|
-| `main` | até o PR12: `Luna.Desktop` esqueleto WPF (`21cf04a`) |
-| PR #33 — `pr13-resultados-exportacao` | Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP, **aberto para revisão** |
+| `main` | até o PR13: MVP do `Luna.Desktop` encerrado (`ef8c800`) |
+| `pr14-painel-cliente` | Painel do Cliente no WPF com ScottPlot 5 (PR14), **aberto para revisão** |
+| PR #33 — `pr13-resultados-exportacao` | Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP, **mergeado** em 20/10 (`ef8c800`) |
 | PR #32 — `pr12-desktop-esqueleto` | `Luna.Desktop` (WPF): Base, Validação, Processamento, **mergeado** em 20/10 (`21cf04a`) |
 | PR #31 — `pr11-painel-cliente` | painel do cliente em Application (PR11), **mergeado** em 20/10 (`acc331d`) |
 | PR #30 — `pr10-progresso-cancelamento` | progresso por estágio e cancelamento (PR10), **mergeado** em 20/10 (`ca2256e`) |
@@ -20,14 +21,39 @@ Estado em 20/10/2026.
 | Roteiros das fases | `LUNA_REVALIDACAO_POS_CORRECOES_PLAN.md`, `LUNA_MIGRACAO_CSHARP_FASE0_PLAN.md`, `LUNA_WPF_PLAN.md` |
 | Estado detalhado da migração | `dotnet/README.md` |
 
-Próximo passo: interface WPF com o escopo **aprovado em 20/10** em
-`LUNA_WPF_PLAN.md` (§4: MVP Base/Validação/Processamento/Resultados/
-Exportação; ScottPlot 5 depois de protótipo; CommunityToolkit.Mvvm;
-self-contained win-x64 portátil; Fluent). Ordem do §5: PR10–PR12 mergeados,
-PR13 (Resultados e Exportação) em revisão; depois o protótipo ScottPlot 5
-(§4.2), PR14 (Painel do Cliente) e PR15 (publicação portátil).
+Próximo passo: o **MVP do desktop está encerrado** (Base, Validação,
+Processamento, Resultados e Exportação; PR10–PR13 mergeados). O protótipo
+ScottPlot 5 (§4.2 do `LUNA_WPF_PLAN.md`) foi aprovado em 20/10; o PR14
+(Painel do Cliente, branch `pr14-painel-cliente`) está em revisão; depois vem
+o PR15 (publicação portátil).
 
-## Resultados e Exportação (PR13, PR #33, 20/10/2026)
+## Painel do Cliente (PR14, 20/10/2026)
+
+- `PainelClienteViewModel` + `TelaDoPainel` (Apresentacao) sobre o
+  `PaineisDeCliente` do PR11, sem mudança no Domain/Application; gráficos
+  ScottPlot só no `Luna.Desktop` (`Views/GraficosDoCliente.cs`). TFM do
+  Desktop: `net10.0-windows10.0.19041.0` (sem suprimir NU1701).
+- Referência da tela web no repo:
+  `dotnet/tests/Luna.Apresentacao.Tests/dados/painel/` (`gerar_painel_tela.py`
+  → `esperado.json`, 104 casos). Fora do repo:
+  `luna-fuzz-harness/desktop/painel_tela` (diferencial do texto numa base
+  local; `comparar.py` só imprime contagens) e `smoke.ps1` com os passos 8b e
+  10b (`-LinhasGrande` para outra base grande).
+- Validação, números e publicação (193 MB) no `dotnet/README.md` (seção PR14).
+
+## Protótipo ScottPlot 5 (Fase A do PR14, aprovado em 20/10/2026)
+
+- Fora do repo: `luna-fuzz-harness/desktop/scottplot/` (`RELATORIO.md`,
+  `rodar.ps1`). Desenha os records do PR11 (`GraficoCliente`,
+  `GraficoAberturas`) sem refazer conta; 12 critérios, 150 verificações OK em
+  7 cenários × 2 temas (inclui janela que cruza a meia-noite e 4.969 entregas).
+- Decisões aprovadas para o PR14: `ScottPlot.WPF` 5.1.59 (MIT); zoom e
+  deslocamento só no eixo X, os dois eixos Y fixos a partir de zero; TFM
+  `net10.0-windows10.0.19041.0` (assets modernos do `SkiaSharp.Views.WPF`, sem
+  suprimir NU1701); mediana `#00866A` só no tema claro; redimensionar o trecho
+  da visão geral pelas bordas é opcional; base real só validada localmente.
+
+## Resultados e Exportação (PR13, PR #33, mergeado em 20/10/2026)
 
 - Plano aprovado em 20/10 com decisões definitivas: as 8 saídas de
   `ResultadoProcessamento.Saidas` (Janelas some com o cálculo desligado);
@@ -54,8 +80,8 @@ PR13 (Resultados e Exportação) em revisão; depois o protótipo ScottPlot 5
   Testes cobrem Excel/ZIP e arquivo concorrente aberto; as esperas
   coordenadas dos testes têm timeout e liberação em `finally`.
 - Validação após a correção: 289 + 306 + 69 testes .NET, 98 Python;
-  build da solução incluindo WPF sem erros ou avisos. UI e desempenho
-  mantêm as evidências anteriores; não foram medidos novamente.
+  build da solução incluindo WPF sem erros ou avisos; hashes 33/33 + 4/4;
+  `smoke.ps1` 35/35 nos temas claro e escuro no build de `f09b26b`.
 - Números e validação no `dotnet/README.md` (seção PR13) e na descrição do PR.
 
 ## Luna.Desktop — esqueleto WPF (PR12, PR #32, mergeado em 20/10/2026)

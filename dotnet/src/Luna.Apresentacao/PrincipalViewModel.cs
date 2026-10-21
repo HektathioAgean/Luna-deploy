@@ -9,23 +9,25 @@ public sealed record Secao(string Nome, string Icone, ObservableObject Conteudo)
 
 /// <summary>
 /// A janela principal: navegação lateral entre Base, Validação,
-/// Processamento, Resultados e Exportação. Cada resultado novo da Base
+/// Processamento, Resultados, Painel do Cliente e Exportação. Cada resultado novo da Base
 /// atualiza as outras. Processar e exportar não rodam ao mesmo tempo.
 /// </summary>
 public sealed partial class PrincipalViewModel : ObservableObject
 {
     public PrincipalViewModel(
         ExecutorDeProcessamento executor, ExecutorDeExportacao exportador, IDespachante despachante,
-        IEscolhaDeArquivo escolha, IDialogosDeExportacao dialogos)
+        IEscolhaDeArquivo escolha, IDialogosDeExportacao dialogos, MontadorDePainel? montarPainel = null)
     {
         Base = new BaseViewModel(executor, despachante, escolha);
         Exportacao = new ExportacaoViewModel(exportador, despachante, dialogos);
+        PainelCliente = new PainelClienteViewModel(despachante, montarPainel);
         Secoes =
         [
             new("Base", "", Base),
             new("Validação", "", Validacao),
             new("Processamento", "", Processamento),
             new("Resultados", "", Resultados),
+            new("Painel do Cliente", "", PainelCliente),
             new("Exportação", "", Exportacao),
         ];
         SecaoAtual = Secoes[0];
@@ -44,6 +46,7 @@ public sealed partial class PrincipalViewModel : ObservableObject
     public ProcessamentoViewModel Processamento { get; } = new();
     public ResultadosViewModel Resultados { get; } = new();
     public ExportacaoViewModel Exportacao { get; }
+    public PainelClienteViewModel PainelCliente { get; }
     public IReadOnlyList<Secao> Secoes { get; }
 
     [ObservableProperty]
@@ -56,6 +59,7 @@ public sealed partial class PrincipalViewModel : ObservableObject
         Validacao.Atualizar(Base.Resultado);
         Processamento.Atualizar(Base.Resultado);
         Resultados.Atualizar(Base.Resultado);
+        PainelCliente.Atualizar(Base.Resultado);
         Exportacao.Atualizar(Base.Resultado);
     }
 }

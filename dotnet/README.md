@@ -10,8 +10,8 @@ substituição ser aprovada.
 | `src/Luna.Domain` | regras e funções matemáticas puras | nenhuma (só BCL) |
 | `src/Luna.Application` | caso de uso `ProcessarBase`, `ParametrosProcessamento`, porta `ILeitorDeBase`, `SaidasExportacao` (as 8 tabelas da exportação), `PaineisDeCliente` (painel do cliente) | Domain |
 | `src/Luna.Infrastructure` | `CarregadorDeArquivo`, leitura de CSV e de XLSX/XLSM, `Exportador` (gravação em Excel e ZIP/CSV) | Application, DocumentFormat.OpenXml 3.5.1 (MIT) |
-| `src/Luna.Apresentacao` | ViewModels da interface (MVVM), sem WPF: Base, Validação, Processamento, Resultados (linhas virtuais, texto da célula), Exportação, mensagens de erro | Application, CommunityToolkit.Mvvm 8.4.2 (MIT) |
-| `src/Luna.Desktop` | aplicativo Windows: WPF .NET 10, tema Fluent do sistema, navegação lateral | Apresentacao, Infrastructure |
+| `src/Luna.Apresentacao` | ViewModels da interface (MVVM), sem WPF: Base, Validação, Processamento, Resultados (linhas virtuais, texto da célula), Painel do Cliente, Exportação, mensagens de erro | Application, CommunityToolkit.Mvvm 8.4.2 (MIT) |
+| `src/Luna.Desktop` | aplicativo Windows: WPF .NET 10 (`net10.0-windows10.0.19041.0`), tema Fluent do sistema, navegação lateral, gráficos do Painel do Cliente | Apresentacao, Infrastructure, ScottPlot.WPF 5.1.59 (MIT) |
 | `tests/Luna.Domain.Tests` | testes de unidade e paridade com o contrato | xUnit |
 | `tests/Luna.Integration.Tests` | leitura de arquivo e fluxo ponta a ponta contra o Python | xUnit |
 | `tests/Luna.Apresentacao.Tests` | ViewModels sem WPF: estados, progresso, cancelamento, erros, linhas virtuais, texto das células contra o Python, gravação real | xUnit |
@@ -344,7 +344,7 @@ SDK fixado em `global.json` (10.0.401, aceita feature bands mais novas).
 
 ```powershell
 dotnet test dotnet/Luna.sln
-dotnet run --project dotnet/src/Luna.Desktop        # aplicativo Windows (PR12–PR13)
+dotnet run --project dotnet/src/Luna.Desktop        # aplicativo Windows (PR12–PR14)
 ```
 
 ### Luna.Desktop (PR12, esqueleto)
@@ -367,11 +367,11 @@ no Windows. Avisos de progresso não vazam para a execução seguinte: o aviso
 (`Dispatcher.InvokeAsync`) e a continuação do `await` vão para a mesma fila,
 na mesma prioridade, e o comando só aceita outra execução depois do fim.
 
-Sem navegador, servidor, Python nem administrador. Ainda não: Painel do
-Cliente na tela (PR14), publicação portátil (PR15). O Luna Python continua
+Sem navegador, servidor, Python nem administrador. Ainda não: publicação
+portátil (PR15). O Luna Python continua
 independente.
 
-### Resultados e Exportação (PR13, fecha o MVP)
+### Resultados e Exportação (PR13, fecha o MVP; mergeado em 20/10/2026, `ef8c800`)
 
 **Resultados:** uma aba por saída de `ResultadoProcessamento.Saidas`, na
 ordem do motor (Base Bruta, Base Validada, Base Detalhada, Inconsistências,
@@ -437,8 +437,9 @@ solução incluindo WPF com zero erros e avisos. Os nove casos novos cobrem
 colisão na publicação em Excel/ZIP, arquivo concorrente aberto,
 compatibilidade do comportamento padrão e a mensagem de colisão.
 As esperas coordenadas dos testes receberam timeout e liberação em
-`finally`. As medições de UI e desempenho abaixo são as anteriores à
-correção; não foram repetidas nesta revisão.
+`finally`. Hashes do contrato 33/33 + 4/4. A fumaça (`smoke.ps1`) passou de
+novo, 35/35 nos temas claro e escuro, no build de `f09b26b`; as medições de
+virtualização e desempenho abaixo são as anteriores à correção.
 
 **Virtualização medida (20/10/2026)** no `Luna.Desktop` real, por um
 programa fora do repo (`luna-fuzz-harness/desktop/virtualizacao`): por aba,
@@ -482,6 +483,65 @@ cancelado de lá: arquivo anterior intacto e nenhum `.parcial`; ZIP de 300
 mil linhas até o fim (2,8 s). Os botões do `MessageBox` aparecem para a UI
 Automation como `Pane` sem `Invoke`: o roteiro responde com `WM_COMMAND`
 (IDYES/IDNO) na caixa, sem mouse nem foco.
+
+### Painel do Cliente (PR14, em revisão)
+
+Seção nova entre Resultados e Exportação, como a aba `aba_cliente.js`. As
+contas são as do `PaineisDeCliente` (PR11, sem mudança); a seção só tem estado
+de tela e desenho.
+
+- **`PainelClienteViewModel`** (Apresentacao): lista dos clientes
+  (`ClientesDisponiveis`), busca (trim + maiúsculas + contém, como o
+  `oninput` da web), lista virtualizada inteira (sem o limite de 300 itens da
+  web), dia da semana, rótulos de tempo; o painel é montado em `Task.Run` e só
+  o pedido mais recente escreve na tela (o contador `pedido` da web). O
+  último cliente escolhido continua depois de reprocessar, se ainda existe.
+- **`TelaDoPainel`**: todo o texto do `desenharPainel` (mensagem de vazio,
+  linha de apoio, métricas com a "delta" do gap, aviso de volume, dicas,
+  métricas e aviso da janela, legenda) com os números do `String()` do
+  JavaScript (`FormatoCelula.TextoJs`) e as células da tabela pelo
+  `FormatoCelula`, como em Resultados.
+- **Gráficos** (só no `Luna.Desktop`, `Views/GraficosDoCliente.cs`): ScottPlot
+  5.1.59 desenhando os records `GraficoCliente` e `GraficoAberturas` sem
+  refazer conta. Barras no eixo esquerdo e tempo no direito, os dois fixos a
+  partir de zero; zoom (roda) e deslocamento (arrastar) só no eixo X; visão
+  geral embaixo com o trecho visível arrastável (o rangeslider da web); duplo
+  clique volta à faixa inicial do motor; dica do ponto sob o mouse. Aberturas
+  no minuto do dia, faixa verde da janela (duas quando cruza a meia-noite) e
+  linhas tracejadas. Cores do tema do Fluent, redesenho quando o tema do
+  Windows muda; série da mediana `#00866A` no tema claro (`#00CC96` dava 1,9:1).
+  Datas do eixo X inclinadas a 45°.
+- **TFM do `Luna.Desktop`**: `net10.0-windows10.0.19041.0`. O
+  `SkiaSharp.Views.WPF` 3.119.0 (do ScottPlot) só tem assets modernos para
+  esse alvo; com `net10.0-windows` cairia no `lib/net462` (NU1701). Sem
+  supressão de aviso. Mínimo: Windows 10 2004. Quem referencia o Desktop
+  precisa do mesmo alvo (no repo, ninguém; fora, o `virtualizacao`, ajustado).
+
+**Validação (20/10/2026):** build da solução com 0 avisos e 0 erros; 289 testes
+de domínio, 306 de integração e 181 de apresentação (112 novos). O texto da
+tela é comparado com a versão web nos 104 casos do PR11
+(`dados/painel/gerar_painel_tela.py` → `esperado.json`: 8.595 células, 49
+painéis vazios, 50 com janela, 5 com janelas desligadas). Mutações no texto
+(espaço do apoio, arredondamento da largura) quebram 55 e 5 casos. Hashes do
+contrato 33/33 + 4/4; pytest 98; Python igual à tag `luna-py-ref-v1.1`.
+Diferencial do texto fora do repo (`luna-fuzz-harness/desktop/painel_tela`):
+495/495 painéis iguais na base de 300 mil linhas (55.832 células) e 492/492 na
+base real (34.443 células; só contagens registradas).
+
+**Publicação self-contained win-x64:** 193,0 MB (antes 148,3 MB): +44,7 MB,
+dos quais 23,7 MB são a projeção WinRT (`Microsoft.Windows.SDK.NET.dll`) que
+vem com o TFM `windows10.0.19041` e 20,3 MB o ScottPlot (SkiaSharp 10,9 MB,
+OpenTK 5,9 MB, HarfBuzz 1,8 MB). Licenças novas: MIT, e zlib (GLFW).
+
+**Roteiro de UI** (`smoke.ps1`): 43 passos, 43/43 nos temas claro e escuro, no
+build Debug e no executável publicado, e com a base real. Os 8 novos: primeiro
+cliente e métricas; gráficos desenhados e com o fundo do tema; contraste do
+eixo (entregas 18,3:1 claro e 16,3:1 escuro; aberturas 16,6:1 e 16,3:1);
+tabela com 20 entregas + 2 linhas de resumo; busca e troca de cliente; filtro
+de dia; rótulos de tempo; e, na base de 300 mil linhas (9.000 clientes), o
+painel abre em ~360 ms e troca de cliente em ~100 ms (base real, 6.909
+clientes: ~360 ms e ~100 ms). O protótipo que fixou estas decisões fica em
+`luna-fuzz-harness/desktop/scottplot/` (`RELATORIO.md`).
 
 Os testes acham `tests/dados/contrato/` subindo a partir da pasta de saída e
 conferem o SHA-256 de cada arquivo contra o `MANIFEST.json`.

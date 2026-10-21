@@ -52,7 +52,7 @@ public sealed class ViewModelsTests : IDisposable
     public void Navegacao_comeca_na_base()
     {
         var p = Principal();
-        Assert.Equal(["Base", "Validação", "Processamento", "Resultados", "Exportação"], p.Secoes.Select(s => s.Nome));
+        Assert.Equal(["Base", "Validação", "Processamento", "Resultados", "Painel do Cliente", "Exportação"], p.Secoes.Select(s => s.Nome));
         Assert.Same(p.Base, p.SecaoAtual.Conteudo);
         p.SecaoAtual = p.Secoes[2];
         Assert.Same(p.Processamento, p.SecaoAtual.Conteudo);
