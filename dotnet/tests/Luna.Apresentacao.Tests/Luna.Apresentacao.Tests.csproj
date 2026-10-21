@@ -17,6 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="dados\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Luna.Apresentacao\Luna.Apresentacao.csproj" />
     <ProjectReference Include="..\..\src\Luna.Infrastructure\Luna.Infrastructure.csproj" />
   </ItemGroup>

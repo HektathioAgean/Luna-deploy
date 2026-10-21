@@ -6,8 +6,9 @@ Estado em 20/10/2026.
 
 | Item | Situação |
 |---|---|
-| `main` | até o PR11: painel do cliente em Application (`acc331d`) |
-| PR #32 — `pr12-desktop-esqueleto` | `Luna.Desktop` (WPF): Base, Validação, Processamento, **aberto para revisão** |
+| `main` | até o PR12: `Luna.Desktop` esqueleto WPF (`21cf04a`) |
+| PR #33 — `pr13-resultados-exportacao` | Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP, **aberto para revisão** |
+| PR #32 — `pr12-desktop-esqueleto` | `Luna.Desktop` (WPF): Base, Validação, Processamento, **mergeado** em 20/10 (`21cf04a`) |
 | PR #31 — `pr11-painel-cliente` | painel do cliente em Application (PR11), **mergeado** em 20/10 (`acc331d`) |
 | PR #30 — `pr10-progresso-cancelamento` | progresso por estágio e cancelamento (PR10), **mergeado** em 20/10 (`ca2256e`) |
 | PR #28 — `pr9-exportacao` | gravação da exportação em Excel e ZIP/CSV (PR9), **mergeado** em 20/10 (`def4393`) |
@@ -22,10 +23,42 @@ Estado em 20/10/2026.
 Próximo passo: interface WPF com o escopo **aprovado em 20/10** em
 `LUNA_WPF_PLAN.md` (§4: MVP Base/Validação/Processamento/Resultados/
 Exportação; ScottPlot 5 depois de protótipo; CommunityToolkit.Mvvm;
-self-contained win-x64 portátil; Fluent). Ordem do §5: PR10 (progresso e
-cancelamento, sem UI), PR11 (painel do cliente em Application), depois a UI.
+self-contained win-x64 portátil; Fluent). Ordem do §5: PR10–PR12 mergeados,
+PR13 (Resultados e Exportação) em revisão; depois o protótipo ScottPlot 5
+(§4.2), PR14 (Painel do Cliente) e PR15 (publicação portátil).
 
-## Luna.Desktop — esqueleto WPF (PR12, PR #32, 20/10/2026)
+## Resultados e Exportação (PR13, PR #33, 20/10/2026)
+
+- Plano aprovado em 20/10 com decisões definitivas: as 8 saídas de
+  `ResultadoProcessamento.Saidas` (Janelas some com o cálculo desligado);
+  `Luna.Apresentacao` sem referência à Infrastructure (delegate
+  `ExecutorDeExportacao`, ligado ao `Exportador` na composição); progresso da
+  exportação na barra global; arquivo existente → pergunta antes (recusada,
+  nada é tocado).
+- Resultados: `LinhasVirtuais` (`IList`, linha montada só quando a grade
+  pede, `IndexOf` sem percorrer), `FormatoCelula` (texto igual ao da tela web:
+  `_valor_json` + `celula()` do tabela.js), colunas pelo `ColunasDaTabela`.
+  Referência no repo: `dotnet/tests/Luna.Apresentacao.Tests/dados/resultados/`
+  (`gerar_resultados.py` → `esperado.json`).
+- Exportação: pasta, alvo mostrado, Excel/ZIP em `Task.Run`, passo por aba,
+  cancelar, erros por `MensagemDeErro.ParaExportacao`. Exclusão
+  processar × exportar nos comandos e nos métodos.
+- Fora do repo: `luna-fuzz-harness/desktop/virtualizacao` (mede a
+  virtualização e grava pela ExportacaoViewModel no app real; uso no topo do
+  `Programa.cs`) e `smoke.ps1` estendido (Resultados, Exportação, confirmar,
+  cancelar o Excel da base grande a partir da seção Base). Base sintética de
+  300 mil linhas: `luna-fuzz-harness/bench/base300k/` (`gerar_base.py`).
+- Revisão do PR13: a autorização de sobrescrita chega à publicação. Sem
+  confirmação, um destino criado durante a gravação é preservado, a
+  exportação falha com mensagem específica e o temporário é removido.
+  Testes cobrem Excel/ZIP e arquivo concorrente aberto; as esperas
+  coordenadas dos testes têm timeout e liberação em `finally`.
+- Validação após a correção: 289 + 306 + 69 testes .NET, 98 Python;
+  build da solução incluindo WPF sem erros ou avisos. UI e desempenho
+  mantêm as evidências anteriores; não foram medidos novamente.
+- Números e validação no `dotnet/README.md` (seção PR13) e na descrição do PR.
+
+## Luna.Desktop — esqueleto WPF (PR12, PR #32, mergeado em 20/10/2026)
 
 - Projetos novos: `Luna.Apresentacao` (ViewModels MVVM sem WPF,
   CommunityToolkit.Mvvm 8.4.2), `Luna.Desktop` (WPF .NET 10, `ThemeMode="System"`,
@@ -201,7 +234,7 @@ Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.
 
 ```powershell
 .venv\Scripts\python -m pytest -q        # 98 passed
-dotnet test dotnet\Luna.sln              # 289 + 302 + 16 passed
+dotnet test dotnet\Luna.sln              # 289 + 306 + 69 passed
 ```
 
 O contrato só vale com as versões travadas (`tests/test_contrato.py` falha

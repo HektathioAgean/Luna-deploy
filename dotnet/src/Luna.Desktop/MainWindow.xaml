@@ -16,6 +16,12 @@
     <DataTemplate DataType="{x:Type vm:ProcessamentoViewModel}">
       <v:ProcessamentoView />
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ResultadosViewModel}">
+      <v:ResultadosView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:ExportacaoViewModel}">
+      <v:ExportacaoView />
+    </DataTemplate>
   </Window.Resources>
 
   <Grid>
@@ -67,50 +73,73 @@
       <!-- Conteúdo da seção -->
       <ContentControl Content="{Binding SecaoAtual.Conteudo}" Focusable="False" />
 
-      <!-- Ação, estado e progresso: barra fixa, visível em todas as seções, ligada à Base. -->
-      <Border Grid.Row="1" DataContext="{Binding Base}" Padding="36,14,36,16" BorderThickness="0,1,0,0"
+      <!-- Ação, estado e progresso: barra fixa, visível em todas as seções. Primeiro o processamento (Base), depois a exportação. -->
+      <Border Grid.Row="1" Padding="36,14,36,16" BorderThickness="0,1,0,0"
               BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
         <StackPanel>
-          <StackPanel Orientation="Horizontal">
-            <Button Content="Processar base" MinWidth="150" Command="{Binding ProcessarCommand}"
-                    Background="{StaticResource LunaExecutar}" Foreground="White"
-                    AutomationProperties.AutomationId="BotaoProcessar" />
-            <Button Content="Cancelar" MinWidth="110" Margin="8,0,0,0" Command="{Binding ProcessarCancelCommand}"
-                    Visibility="{Binding EmExecucao, Converter={StaticResource Visivel}}"
-                    AutomationProperties.AutomationId="BotaoCancelar" />
-            <TextBlock Text="{Binding TextoEstado}" Margin="16,0,0,0" VerticalAlignment="Center"
-                       AutomationProperties.AutomationId="TextoEstado" />
+          <StackPanel DataContext="{Binding Base}">
+            <StackPanel Orientation="Horizontal">
+              <Button Content="Processar base" MinWidth="150" Command="{Binding ProcessarCommand}"
+                      Background="{StaticResource LunaExecutar}" Foreground="White"
+                      AutomationProperties.AutomationId="BotaoProcessar" />
+              <Button Content="Cancelar" MinWidth="110" Margin="8,0,0,0" Command="{Binding ProcessarCancelCommand}"
+                      Visibility="{Binding EmExecucao, Converter={StaticResource Visivel}}"
+                      AutomationProperties.AutomationId="BotaoCancelar" />
+              <TextBlock Text="{Binding TextoEstado}" Margin="16,0,0,0" VerticalAlignment="Center"
+                         AutomationProperties.AutomationId="TextoEstado" />
+            </StackPanel>
+            <ProgressBar IsIndeterminate="True" Height="4" Margin="0,14,0,0"
+                         Visibility="{Binding EmExecucao, Converter={StaticResource Visivel}}" />
+            <ItemsControl ItemsSource="{Binding Estagios}" Margin="0,14,0,0" Focusable="False"
+                          AutomationProperties.AutomationId="Estagios">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border x:Name="Fundo" Style="{StaticResource Etiqueta}">
+                    <TextBlock x:Name="Texto" Text="{Binding Rotulo}" Opacity="0.55"
+                               AutomationProperties.ItemStatus="pendente" />
+                  </Border>
+                  <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding Iniciado}" Value="True">
+                      <Setter TargetName="Fundo" Property="BorderBrush" Value="{StaticResource LunaAcento}" />
+                      <Setter TargetName="Texto" Property="Opacity" Value="1" />
+                      <Setter TargetName="Texto" Property="AutomationProperties.ItemStatus" Value="iniciado" />
+                    </DataTrigger>
+                  </DataTemplate.Triggers>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border BorderBrush="{DynamicResource SystemFillColorCriticalBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,8,0,0"
+                    Visibility="{Binding MensagemDeErro, Converter={StaticResource TemTexto}}">
+              <TextBlock Text="{Binding MensagemDeErro}" TextWrapping="Wrap" Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                         AutomationProperties.AutomationId="TextoErro" />
+            </Border>
           </StackPanel>
-          <ProgressBar IsIndeterminate="True" Height="4" Margin="0,14,0,0"
-                       Visibility="{Binding EmExecucao, Converter={StaticResource Visivel}}" />
-          <ItemsControl ItemsSource="{Binding Estagios}" Margin="0,14,0,0" Focusable="False"
-                        AutomationProperties.AutomationId="Estagios">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <WrapPanel />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border x:Name="Fundo" Style="{StaticResource Etiqueta}">
-                  <TextBlock x:Name="Texto" Text="{Binding Rotulo}" Opacity="0.55"
-                             AutomationProperties.ItemStatus="pendente" />
-                </Border>
-                <DataTemplate.Triggers>
-                  <DataTrigger Binding="{Binding Iniciado}" Value="True">
-                    <Setter TargetName="Fundo" Property="BorderBrush" Value="{StaticResource LunaAcento}" />
-                    <Setter TargetName="Texto" Property="Opacity" Value="1" />
-                    <Setter TargetName="Texto" Property="AutomationProperties.ItemStatus" Value="iniciado" />
-                  </DataTrigger>
-                </DataTemplate.Triggers>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <Border BorderBrush="{DynamicResource SystemFillColorCriticalBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,8,0,0"
-                  Visibility="{Binding MensagemDeErro, Converter={StaticResource TemTexto}}">
-            <TextBlock Text="{Binding MensagemDeErro}" TextWrapping="Wrap" Foreground="{DynamicResource SystemFillColorCriticalBrush}"
-                       AutomationProperties.AutomationId="TextoErro" />
-          </Border>
+
+          <!-- Exportação: aparece quando há gravação em curso ou terminada para o resultado atual. -->
+          <StackPanel DataContext="{Binding Exportacao}" Margin="0,12,0,0" AutomationProperties.AutomationId="BarraExportacao"
+                      Visibility="{Binding Ativa, Converter={StaticResource Visivel}}">
+            <StackPanel Orientation="Horizontal">
+              <Button Content="Cancelar exportação" MinWidth="150" Margin="0,0,16,0" Command="{Binding GravarCancelCommand}"
+                      Visibility="{Binding EmExecucao, Converter={StaticResource Visivel}}"
+                      AutomationProperties.AutomationId="BotaoCancelarExportacao" />
+              <TextBlock Text="{Binding TextoEstado}" VerticalAlignment="Center" TextWrapping="Wrap"
+                         AutomationProperties.AutomationId="TextoEstadoExportacao" />
+              <TextBlock Text="{Binding Passo}" Margin="16,0,0,0" VerticalAlignment="Center" Opacity="0.8"
+                         AutomationProperties.AutomationId="TextoPassoExportacao" />
+            </StackPanel>
+            <ProgressBar IsIndeterminate="True" Height="4" Margin="0,10,0,0"
+                         Visibility="{Binding EmExecucao, Converter={StaticResource Visivel}}" />
+            <Border BorderBrush="{DynamicResource SystemFillColorCriticalBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,8,0,0"
+                    Visibility="{Binding MensagemDeErro, Converter={StaticResource TemTexto}}">
+              <TextBlock Text="{Binding MensagemDeErro}" TextWrapping="Wrap" Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                         AutomationProperties.AutomationId="TextoErroExportacao" />
+            </Border>
+          </StackPanel>
         </StackPanel>
       </Border>
     </Grid>

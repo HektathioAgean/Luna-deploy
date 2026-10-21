@@ -22,4 +22,23 @@ public static class MensagemDeErro
             $"Não foi possível ler o arquivo. Ele pode estar aberto em outro programa ou sem permissão de leitura. ({erro.Message})",
         _ => $"Erro inesperado ao processar a base ({erro.GetType().Name}). Nenhum resultado foi gerado.",
     };
+
+    /// <summary>
+    /// Quando a gravação falha. Separado de <see cref="Para"/>: aqui o arquivo é
+    /// escrito, não lido. Em qualquer falha o motor apaga o temporário e não
+    /// toca no arquivo que já existia.
+    /// </summary>
+    public static string ParaExportacao(Exception erro) => erro switch
+    {
+        OperationCanceledException => "Exportação cancelada. Nenhum arquivo foi alterado.",
+        GravacaoRecusadaException => erro.Message,
+        DirectoryNotFoundException => "A pasta de destino não existe ou não está acessível. Nenhum arquivo foi alterado.",
+        ArquivoCriadoDuranteGravacaoException criado =>
+            $"O arquivo {criado.Caminho} foi criado por outro programa durante a gravação e não foi substituído. " +
+            "Grave de novo para confirmar a substituição.",
+        IOException or UnauthorizedAccessException =>
+            "Não foi possível gravar o arquivo. Ele pode estar aberto em outro programa (feche-o e grave de novo) ou a " +
+            $"pasta pode estar sem permissão de escrita. O arquivo anterior não foi alterado. ({erro.Message})",
+        _ => $"Erro inesperado ao gravar a exportação ({erro.GetType().Name}). O arquivo anterior não foi alterado.",
+    };
 }

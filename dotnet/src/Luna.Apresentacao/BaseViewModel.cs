@@ -124,7 +124,15 @@ public sealed partial class BaseViewModel : ObservableObject
 
     private string Segundos() => string.Create(PtBr, $"{Decorrido.TotalSeconds:0.0} s");
 
-    private bool PodeProcessar() => !string.IsNullOrWhiteSpace(Caminho);
+    /// <summary>
+    /// Uma exportação está lendo o resultado atual: processar agora o soltaria
+    /// no meio da gravação (e o pico teria duas bases em memória).
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ProcessarCommand))]
+    public partial bool Bloqueado { get; set; }
+
+    private bool PodeProcessar() => !Bloqueado && !string.IsNullOrWhiteSpace(Caminho);
 
     [RelayCommand]
     private void Procurar()
@@ -140,6 +148,9 @@ public sealed partial class BaseViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(PodeProcessar), IncludeCancelCommand = true)]
     private async Task ProcessarAsync(CancellationToken cancelamento)
     {
+        // Execute não confere CanExecute: o bloqueio vale também para quem chama o comando direto.
+        if (Bloqueado)
+            return;
         MensagemDeErro = null;
         Resultado = null;
         Decorrido = TimeSpan.Zero;
