@@ -3,7 +3,8 @@
   <!-- Aplicativo Windows (WPF, tema Fluent). Regras e textos de tela ficam no Luna.Apresentacao. -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- 10.0.19041: o SkiaSharp.Views.WPF (do ScottPlot) só tem assets modernos para esse alvo; abaixo dele cai no net462 (NU1701). -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <AssemblyTitle>Luna</AssemblyTitle>
   </PropertyGroup>
@@ -11,6 +12,11 @@
   <ItemGroup>
     <ProjectReference Include="..\Luna.Apresentacao\Luna.Apresentacao.csproj" />
     <ProjectReference Include="..\Luna.Infrastructure\Luna.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Gráficos do Painel do Cliente (protótipo aprovado em 20/10/2026, LUNA_WPF_PLAN §4.2). -->
+    <PackageReference Include="ScottPlot.WPF" Version="5.1.59" />
   </ItemGroup>
 
 </Project>

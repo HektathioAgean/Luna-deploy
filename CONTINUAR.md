@@ -7,7 +7,7 @@ Estado em 20/10/2026.
 | Item | Situação |
 |---|---|
 | `main` | até o PR13: MVP do `Luna.Desktop` encerrado (`ef8c800`) |
-| `pr14-painel-cliente` | Painel do Cliente no WPF com ScottPlot 5 (PR14), **em desenvolvimento** |
+| `pr14-painel-cliente` | Painel do Cliente no WPF com ScottPlot 5 (PR14), **aberto para revisão** |
 | PR #33 — `pr13-resultados-exportacao` | Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP, **mergeado** em 20/10 (`ef8c800`) |
 | PR #32 — `pr12-desktop-esqueleto` | `Luna.Desktop` (WPF): Base, Validação, Processamento, **mergeado** em 20/10 (`21cf04a`) |
 | PR #31 — `pr11-painel-cliente` | painel do cliente em Application (PR11), **mergeado** em 20/10 (`acc331d`) |
@@ -23,9 +23,23 @@ Estado em 20/10/2026.
 
 Próximo passo: o **MVP do desktop está encerrado** (Base, Validação,
 Processamento, Resultados e Exportação; PR10–PR13 mergeados). O protótipo
-ScottPlot 5 (§4.2 do `LUNA_WPF_PLAN.md`) foi aprovado em 20/10; agora vem o
-PR14 (Painel do Cliente, branch `pr14-painel-cliente`) e depois o PR15
-(publicação portátil).
+ScottPlot 5 (§4.2 do `LUNA_WPF_PLAN.md`) foi aprovado em 20/10; o PR14
+(Painel do Cliente, branch `pr14-painel-cliente`) está em revisão; depois vem
+o PR15 (publicação portátil).
+
+## Painel do Cliente (PR14, 20/10/2026)
+
+- `PainelClienteViewModel` + `TelaDoPainel` (Apresentacao) sobre o
+  `PaineisDeCliente` do PR11, sem mudança no Domain/Application; gráficos
+  ScottPlot só no `Luna.Desktop` (`Views/GraficosDoCliente.cs`). TFM do
+  Desktop: `net10.0-windows10.0.19041.0` (sem suprimir NU1701).
+- Referência da tela web no repo:
+  `dotnet/tests/Luna.Apresentacao.Tests/dados/painel/` (`gerar_painel_tela.py`
+  → `esperado.json`, 104 casos). Fora do repo:
+  `luna-fuzz-harness/desktop/painel_tela` (diferencial do texto numa base
+  local; `comparar.py` só imprime contagens) e `smoke.ps1` com os passos 8b e
+  10b (`-LinhasGrande` para outra base grande).
+- Validação, números e publicação (193 MB) no `dotnet/README.md` (seção PR14).
 
 ## Protótipo ScottPlot 5 (Fase A do PR14, aprovado em 20/10/2026)
 

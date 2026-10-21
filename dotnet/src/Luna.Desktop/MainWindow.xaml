@@ -19,6 +19,9 @@
     <DataTemplate DataType="{x:Type vm:ResultadosViewModel}">
       <v:ResultadosView />
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:PainelClienteViewModel}">
+      <v:PainelClienteView />
+    </DataTemplate>
     <DataTemplate DataType="{x:Type vm:ExportacaoViewModel}">
       <v:ExportacaoView />
     </DataTemplate>

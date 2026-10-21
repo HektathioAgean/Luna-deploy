@@ -2,7 +2,7 @@
 
 Estado: **escopo aprovado em 20/10/2026 (§4)**; implementação em PRs
 pequenos (§5). **MVP concluído** (PR13 mergeado em 20/10, `ef8c800`);
-protótipo ScottPlot 5 aprovado em 20/10; PR14 em desenvolvimento. Base: Fase 3 do
+protótipo ScottPlot 5 aprovado em 20/10; PR14 em revisão. Base: Fase 3 do
 `LUNA_MIGRACAO_CSHARP_FASE0_PLAN.md` e a interface atual (`luna.py` +
 `interface/*.js`), com o motor C# validado até o PR9 (leitura, processamento,
 8 saídas e exportação iguais ao Python, inclusive numa base real de 133 mil
@@ -94,7 +94,7 @@ do Python em `ProcessarBase` e progresso por aba no `Exportador`.
 | PR12 | `Luna.Desktop` esqueleto: janela, abas Base/Validação/Processamento, processar com progresso e cancelamento (mergeado, #32) | ViewModels testados; fumaça por UI Automation nos temas claro e escuro |
 | PR13 | aba Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP (mergeado, #33) | fumaça com a base real (133 mil linhas) |
 | — | protótipo ScottPlot 5 (§4.2), fora do produto (aprovado em 20/10) | dois eixos, zoom, deslocamento, barras, dispersão, janela circular |
-| PR14 | Painel do Cliente com ScottPlot 5 (em desenvolvimento) | comparação visual com a versão web |
+| PR14 | Painel do Cliente com ScottPlot 5 (em revisão) | comparação visual com a versão web |
 | PR15 | publicação self-contained win-x64 portátil; instalador por usuário depois | máquina limpa, sem admin |
 
 Cada PR: aberto para revisão, sem merge automático; Python, contrato e

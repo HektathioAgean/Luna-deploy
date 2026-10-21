@@ -5,7 +5,8 @@ using Luna.Application;
 namespace Luna.Apresentacao;
 
 /// <summary>Um par rótulo/valor já formatado para a tela.</summary>
-public sealed record Indicador(string Rotulo, string Valor);
+/// <param name="Delta">Texto menor sob o valor (a "delta" da métrica na tela web), se houver.</param>
+public sealed record Indicador(string Rotulo, string Valor, string? Delta = null);
 
 /// <summary>
 /// Aba Processamento (interface/aba_processamento.js): os 8 KPIs, o resumo da
