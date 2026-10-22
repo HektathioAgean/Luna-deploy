@@ -543,6 +543,70 @@ painel abre em ~360 ms e troca de cliente em ~100 ms (base real, 6.909
 clientes: ~360 ms e ~100 ms). O protótipo que fixou estas decisões fica em
 `luna-fuzz-harness/desktop/scottplot/` (`RELATORIO.md`).
 
+### Leitura do XLSX sem temporário (PR15a; mergeado em 21/10/2026, `31fb48f`)
+
+`SpreadsheetDocument.Open(caminho, false)` (OpenXml 3.5.1) chama
+`EnableUriHandling` → `EnableWriteableStream` → `Path.GetTempFileName()` e
+copia a planilha inteira para `%TEMP%` (mesmo com `Open(stream, false)`). O
+`LeitorXlsx` abre o arquivo só para leitura (`FileShare.Read`) e entrega um
+`Package` em modo Read ao SDK, sem cópia. Pelo `Package` o SDK não corrige
+relações com URI malformada; só nesse caso (`OpenXmlPackageException` com
+`UriFormatException`) o arquivo é reaberto numa cópia em memória, editável e
+sem AutoSave. Sempre editável quase dobraria o pico de memória (300 mil
+linhas: 141 → 249 MB); como ficou, pico, alocações e tempo são os do leitor
+antigo. Testes: `LeitorXlsxSemTemporarioTests` (TMP/TEMP numa pasta
+inexistente, `base_sintetica.xlsx` e `hiperlinks.xlsx`) e a `hiperlinks.xlsx`
+na paridade com openpyxl/`read_excel`. Diferencial fora do repo
+(`luna-fuzz-harness/pr15a/`): fuzz de 300 planilhas + base de 300 mil linhas
+602/602 iguais; base real 2/2; `%TEMP%` vigiado sem nenhum arquivo, contra a
+cópia de 13.415.794 B do leitor antigo.
+
+### Publicação portátil (PR15, em revisão)
+
+`ferramentas/publicar_desktop.ps1` publica o `Luna.Desktop` como `Luna.exe`
+(versão 1.0.0; recursos do WPF só em pt-BR) em Release self-contained win-x64,
+sem PDB, e gera em `dist/`: a pasta, o ZIP, o `.sha256` e o `MANIFESTO.txt`
+(caminho, tamanho e SHA-256 de cada arquivo). O `THIRD-PARTY-NOTICES.txt` sai
+do `Luna.deps.json`: cada pacote e runtime pack com a licença que declara
+(expressão SPDX ou arquivo do pacote) e os avisos que traz; licença sem texto
+conhecido ou componente sem licença resolvida faz o script falhar. Depois de
+compactar, o ZIP é extraído e conferido contra o manifesto. O script recusa
+árvore com alterações não commitadas.
+
+ZIP do commit `45683a6`: `Luna-1.0.0-45683a6-win-x64.zip`, 76.371.030 bytes
+(72,8 MiB), SHA-256
+`FA2644FC3B532AAD71B9A6846EA5E1E9ECC155834C8EEBFA2AF50DB1C92E238B`; pasta com
+288 arquivos e 194.628.983 bytes (185,6 MiB). Runtime .NET 10.0.13 embutido. Licenças: 27 componentes
+de terceiros (MIT; zlib do GLFW pelo `COPYING.md` do `OpenTK.redist.glfw`;
+termos de código distribuível do Windows SDK para o
+`Microsoft.Windows.SDK.NET.Ref`).
+
+**Validação (21/10/2026, fora do repo:
+`luna-fuzz-harness/pr15/testes_distribuicao.ps1`):**
+- integridade: SHA-256 igual ao `.sha256`; `Expand-Archive` (outra
+  implementação que a do script) com os 288 arquivos iguais ao manifesto;
+  `LEIA-ME.txt` com o nome do ZIP e o número de arquivos; sem `.pdb`;
+  `includedFrameworks` com `Microsoft.NETCore.App` e
+  `Microsoft.WindowsDesktop.App`. Contra o ZIP de teste anterior (mesmo
+  conjunto de arquivos), mudaram só as 5 DLLs do Luna e o `Luna.exe` (o commit
+  vai no `ProductVersion`; a Infrastructure mudou no PR15a), o `LEIA-ME.txt` e
+  o `THIRD-PARTY-NOTICES.txt` (commit no cabeçalho);
+- `smoke.ps1` a partir do ZIP extraído num caminho com espaço e acento:
+  43/43 no tema claro, 43/43 no escuro com a pasta do app sob ACL Deny de
+  escrita (gravações de teste bloqueadas; nenhum arquivo novo ou alterado na
+  pasta; nenhum arquivo com "luna" no caminho em `%LOCALAPPDATA%`/`%APPDATA%`)
+  e 43/43 com a base real (133.133 linhas) com o Luna Python aberto na porta
+  8781 (HTTP 200 antes e depois);
+- `%TEMP%` vigiado em cada smoke: nenhum arquivo de 1 MB ou mais (só os do
+  `Add-Type` do próprio smoke); com o executável anterior ao PR15a, dois
+  `tmp*.tmp` de 13.415.794 B;
+- abertura: janela em 510–565 ms (3 aberturas, ~131 MB); com
+  `runas /trustlevel:0x20000` a janela abre (complementar: a prova de conta
+  sem administrador é a homologação).
+
+A homologação no PC corporativo, com conta padrão, segue
+`LUNA_HOMOLOGACAO_DESKTOP.md` e está **pendente**.
+
 Os testes acham `tests/dados/contrato/` subindo a partir da pasta de saída e
 conferem o SHA-256 de cada arquivo contra o `MANIFEST.json`.
 

@@ -6,7 +6,9 @@ Estado em 21/10/2026.
 
 | Item | Situação |
 |---|---|
-| `main` | até o PR14: MVP do `Luna.Desktop` + Painel do Cliente (`2816e7f`) |
+| `main` | até o PR15a: MVP do `Luna.Desktop`, Painel do Cliente e leitura do XLSX sem temporário (`31fb48f`) |
+| PR15 — `pr15-publicacao-portatil` | publicação portátil self-contained win-x64 (`Luna.exe`, ZIP, SHA-256, manifesto, licenças), **aberto para revisão** |
+| PR #36 — `pr15a-xlsx-sem-copia-temporaria` | leitura do XLSX sem cópia em `%TEMP%` (PR15a), **mergeado** em 21/10 (`31fb48f`, squash) |
 | PR #34 — `pr14-painel-cliente` | Painel do Cliente no WPF com ScottPlot 5 (PR14), **mergeado** em 21/10 (`2816e7f`) |
 | PR #33 — `pr13-resultados-exportacao` | Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP, **mergeado** em 20/10 (`ef8c800`) |
 | PR #32 — `pr12-desktop-esqueleto` | `Luna.Desktop` (WPF): Base, Validação, Processamento, **mergeado** em 20/10 (`21cf04a`) |
@@ -22,11 +24,30 @@ Estado em 21/10/2026.
 | Estado detalhado da migração | `dotnet/README.md` |
 
 Próximo passo: o **MVP do desktop está encerrado** (Base, Validação,
-Processamento, Resultados e Exportação; PR10–PR13 mergeados). O protótipo
-ScottPlot 5 (§4.2 do `LUNA_WPF_PLAN.md`) foi aprovado em 20/10 e o PR14
-(Painel do Cliente) foi mergeado em 21/10 (`2816e7f`). Próximo: PR15
-(publicação portátil self-contained win-x64, com `THIRD-PARTY-NOTICES` para as
-licenças MIT e zlib/GLFW que o ScottPlot trouxe).
+Processamento, Resultados e Exportação; PR10–PR13 mergeados), o Painel do
+Cliente (PR14) e a leitura do XLSX sem temporário (PR15a) também. O PR15
+(publicação portátil) está em revisão. Depois do merge: a **homologação no PC
+corporativo** com conta padrão, pelo roteiro `LUNA_HOMOLOGACAO_DESKTOP.md`
+(pendente até ser executada); o instalador por usuário fica para depois.
+
+## Publicação portátil (PR15, em revisão)
+
+- `ferramentas/publicar_desktop.ps1` gera em `dist/` (fora do git) a pasta, o
+  ZIP, o `.sha256` e o `MANIFESTO.txt`; recusa árvore com alterações não
+  commitadas. `THIRD-PARTY-NOTICES.txt` sai do `Luna.deps.json` (falha em
+  licença não resolvida); `LEIA-ME.txt` vem de `ferramentas/distribuicao/`.
+- Testes do ZIP fora do repo: `luna-fuzz-harness/pr15/testes_distribuicao.ps1`
+  (integridade, smoke nos dois temas a partir do ZIP extraído, pasta sem
+  escrita, `%TEMP%`, base real com o Luna Python aberto, inicialização).
+- Números e validação no `dotnet/README.md` (seção PR15).
+
+## Leitura do XLSX sem temporário (PR15a, PR #36, mergeado em 21/10/2026)
+
+- `SpreadsheetDocument.Open(caminho, false)` copiava a planilha inteira para
+  `%TEMP%`. O `LeitorXlsx` lê pelo `Package`; só com hiperlink de URI
+  malformada reabre numa cópia em memória (editável, sem AutoSave).
+- Fora do repo: `luna-fuzz-harness/pr15a/` (diferencial e vigilância do
+  `%TEMP%`) e `luna-fuzz-harness/regressao.ps1` (regressão em lote).
 
 ## Painel do Cliente (PR14, PR #34, mergeado em 21/10/2026)
 
@@ -261,7 +282,7 @@ Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.
 
 ```powershell
 .venv\Scripts\python -m pytest -q        # 98 passed
-dotnet test dotnet\Luna.sln              # 289 + 306 + 69 passed
+dotnet test dotnet\Luna.sln              # 289 + 310 + 181 passed
 ```
 
 O contrato só vale com as versões travadas (`tests/test_contrato.py` falha
