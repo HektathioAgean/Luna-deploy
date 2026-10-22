@@ -1,6 +1,0 @@
-Cod_Cliente;Qtd_Apontamentos;Janela_Inicio_Min;Janela_Fim_Min;Janela_Inicio;Janela_Fim;Janela_Largura_Min;Cobertura_Alvo;Cobertura_Real;Cobertura_Real_Valor;Cruza_MeiaNoite;Periodo_Predominante;Comercial;Base_Janela
-C001;20;555.0;555.0;09:15;09:15;0.0;80%;100.0%;1.0;Nao;Diurno;Sim;Chegou_em
-C003;15;690.0;690.0;11:30;11:30;0.0;80%;100.0%;1.0;Nao;Diurno;Sim;Chegou_em
-C004;12;1390.0;65.0;23:10;01:05;115.0;80%;100.0%;1.0;Sim;Noturno;Nao;Chegou_em
-C009;6;825.0;825.0;13:45;13:45;0.0;80%;100.0%;1.0;Nao;Vespertino;Sim;Chegou_em
-C002;3;840.0;840.0;14:00;14:00;0.0;80%;100.0%;1.0;Nao;Vespertino;Sim;Chegou_em

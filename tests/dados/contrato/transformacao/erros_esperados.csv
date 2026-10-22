@@ -1,6 +1,0 @@
-caso;mensagem
-z_misturado_sem_fuso;A coluna Chegou_em mistura horarios com fuso (Z ou +-hh:mm, 2 linhas) e sem fuso (1 linhas). Linhas sem fuso: 3. Padronize o fuso da base antes de processar.
-fuso_so_na_chegada;A coluna Chegou_em tem horarios com fuso e a coluna Finalizada_em nao. Padronize o fuso da base antes de processar.
-fusos_diferentes;A coluna Chegou_em mistura fusos horarios diferentes. Padronize o fuso da base antes de processar.
-serial_excel_texto;A coluna Chegou_em tem numero serial do Excel em vez de data nas linhas 2. Exporte as datas como texto (dd/mm/aaaa hh:mm:ss) ou use o arquivo .xlsx original.
-serial_excel_virgula;A coluna Chegou_em tem numero serial do Excel em vez de data nas linhas 2. Exporte as datas como texto (dd/mm/aaaa hh:mm:ss) ou use o arquivo .xlsx original.
