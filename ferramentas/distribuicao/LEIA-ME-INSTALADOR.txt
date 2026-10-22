@@ -1,0 +1,37 @@
+LUNA — Instalador para Windows (por usuário)
+
+O QUE ESTE INSTALADOR FAZ
+- Instala o Luna em %LOCALAPPDATA%\Programs\Luna, só para a sua conta.
+  Não precisa de administrador e não pede elevação (UAC).
+- Cria o atalho no Menu Iniciar e, se você marcar, na área de trabalho.
+- Não acessa a rede. O .NET vem junto: não é preciso instalar o .NET nem
+  o Python.
+
+REQUISITOS
+- Windows 10 versão 2004 (build 19041) ou mais novo, ou Windows 11, 64 bits.
+- Cerca de 200 MB livres.
+
+ANTES DE INSTALAR
+- Confira o SHA-256 do instalador com o do arquivo .sha256 que veio com ele:
+      Get-FileHash .\Luna-Setup-<versão>-win-x64.exe -Algorithm SHA256
+- O instalador não é assinado digitalmente: o SmartScreen ou a política da
+  empresa podem avisar ou bloquear. No computador da empresa, não contorne o
+  aviso nem o bloqueio: peça à TI a autorização, informando o nome do
+  instalador e o SHA-256.
+- Se você já extraiu o ZIP portátil do Luna em %LOCALAPPDATA%\Programs\Luna,
+  feche-o: o instalador usa essa mesma pasta e substitui os arquivos do
+  programa (arquivos seus nela ficam).
+
+ATUALIZAR
+- Rode o instalador da versão nova. Se o Luna estiver aberto, o instalador
+  pede para fechá-lo.
+
+DESINSTALAR
+- Feche o Luna e use Configurações > Aplicativos > Luna > Desinstalar. Saem
+  só os arquivos do programa e os atalhos; as bases e as exportações não são
+  apagadas. Com o Luna aberto, o desinstalador pede para fechá-lo.
+
+A pasta instalada é idêntica à do ZIP portátil, inclusive o LEIA-ME.txt dela,
+que fala da versão portátil. Para a versão instalada valem as instruções
+acima. MANIFESTO.txt, na pasta instalada, lista cada arquivo com tamanho e
+SHA-256.
