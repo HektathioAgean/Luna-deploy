@@ -89,3 +89,69 @@ PowerShell, na conta que vai usar o Luna.
 
 Executado por: — · Data: — · Máquina (modelo, Windows, build): — ·
 ZIP (nome e SHA-256): —
+
+## Instalador por usuário
+
+`ferramentas/publicar_instalador.ps1` roda o `publicar_desktop.ps1` (o ZIP
+sai igual), confere a pasta publicada contra o `MANIFESTO.txt` e compila
+`ferramentas/instalador/Luna.iss` (Inno Setup 6) com ela. Gera em `dist/`
+`Luna-Setup-<versão>-win-x64.exe`, o `.sha256` e o `.BUILD.txt` (versão,
+commit, compilador, SHA-256 do manifesto e do ZIP correspondente).
+
+O instalador copia a pasta publicada sem mudar nenhum arquivo para
+`%LOCALAPPDATA%\Programs\Luna`, sem administrador; cria o atalho no Menu
+Iniciar (área de trabalho opcional) e o registro de desinstalação só em
+`HKCU`. Desinstalar remove só o que ele instalou. Na atualização, saem só as
+DLLs que o `MANIFESTO.txt` da instalação anterior lista com o mesmo SHA-256;
+qualquer outra (do usuário, alterada ou ilegível) fica e vai para o log do
+instalador (`/LOG`). Com o Luna aberto, o instalador com janela mostra a
+página do Restart Manager (Luna na lista, "Fechar os aplicativos
+automaticamente" ou "Não fechar"): ao fechar, o que estava na tela do Luna se
+perde (exportações já gravadas ficam). Silencioso, com o Luna aberto, ele
+não instala (código 7) em vez de fechar sem aviso. O desinstalador não
+começa com o Luna aberto (o do Inno não usa o Restart Manager: sem essa
+checagem, as DLLs em uso ficariam na pasta sem registro).
+
+Roteiro com conta padrão, depois dos passos 1–2. Se o ZIP portátil já foi
+extraído em `%LOCALAPPDATA%\Programs\Luna`, apague a pasta antes.
+
+I1. **Integridade.** SHA-256 do `.exe` igual ao do `.sha256`.
+I2. **Instalação.** Abra o instalador. Anote SmartScreen/bloqueio (sem
+    contornar). Esperado: nenhum pedido de elevação (UAC); a página de
+    informações; a tarefa da área de trabalho desmarcada.
+I3. **Arquivos.** `powershell -ExecutionPolicy Bypass -File
+    ferramentas\conferir_instalacao.ps1` (ou o mesmo script copiado):
+    todos os arquivos iguais ao `MANIFESTO.txt`.
+I4. **Registro e atalhos.** Atalho "Luna" no Menu Iniciar (e na área de
+    trabalho, se marcado); "Luna" em Configurações > Aplicativos;
+    `Get-ChildItem HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall |
+    Where-Object { $_.GetValue('DisplayName') -like 'Luna*' }` mostra a
+    entrada, e a mesma busca em `HKLM:` não mostra nada.
+I5. **Funcionamento offline.** Com a rede desligada, repita os passos 8–12
+    abrindo pelo atalho.
+I6. **Atualização com o Luna aberto.** Com o Luna aberto, rode o instalador
+    de novo, com um arquivo seu `minha_biblioteca.dll` na pasta. Esperado: a
+    página do Restart Manager lista o Luna e só fecha com a sua escolha; no
+    fim, I3 continua igual e `minha_biblioteca.dll` fica com o mesmo SHA-256.
+I7. **Desinstalação preserva dados.** Copie um arquivo seu para
+    `%LOCALAPPDATA%\Programs\Luna` e mantenha as exportações do passo 11.
+    Com o Luna aberto, desinstale por Configurações > Aplicativos: o
+    desinstalador pede para fechar o Luna. Feche e clique em Repetir.
+    Esperado: somem os atalhos,
+    a entrada de `HKCU` e os arquivos do programa; ficam o arquivo copiado e
+    as exportações.
+I8. **Instalação silenciosa.** `Luna-Setup-<versão>-win-x64.exe /VERYSILENT
+    /SUPPRESSMSGBOXES` instala sem janela; depois, I3 e desinstalação.
+
+| Passo | Resultado | Observação |
+|---|---|---|
+| I1. Integridade | pendente | |
+| I2. Instalação (SmartScreen, UAC) | pendente | |
+| I3. Arquivos | pendente | |
+| I4. Registro e atalhos | pendente | |
+| I5. Offline | pendente | |
+| I6. Atualização com o Luna aberto | pendente | |
+| I7. Desinstalação preserva dados | pendente | |
+| I8. Silenciosa | pendente | |
+
+Instalador (nome e SHA-256): —
