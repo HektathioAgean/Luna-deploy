@@ -6,7 +6,12 @@
     <!-- 10.0.19041: o SkiaSharp.Views.WPF (do ScottPlot) só tem assets modernos para esse alvo; abaixo dele cai no net462 (NU1701). -->
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- O usuário abre Luna.exe; os namespaces continuam Luna.Desktop. -->
+    <AssemblyName>Luna</AssemblyName>
     <AssemblyTitle>Luna</AssemblyTitle>
+    <Version>1.0.0</Version>
+    <!-- A interface é só em português: os recursos do WPF nos outros 12 idiomas não vão para a pasta (−8 MB). -->
+    <SatelliteResourceLanguages>pt-BR</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
