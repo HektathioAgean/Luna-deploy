@@ -1,7 +1,0 @@
-[
-{"base": "tests/dados/TESTE_data.csv", "params": {}, "processamento": ["leitura", "padronizacao", "validacao", "transformacao", "regras_operacionais", "medianas", "kpis", "base_detalhada", "janelas", "concluido"], "exportacao_xlsx": ["releitura_base_bruta", "gravacao_xlsx", "concluido"], "exportacao_zip": ["releitura_base_bruta", "gravacao_zip", "concluido"]},
-{"base": "tests/dados/TESTE_data.csv", "params": {"exibir_janelas_entrega": false}, "processamento": ["leitura", "padronizacao", "validacao", "transformacao", "regras_operacionais", "medianas", "kpis", "base_detalhada", "concluido"], "exportacao_xlsx": ["releitura_base_bruta", "gravacao_xlsx", "concluido"], "exportacao_zip": ["releitura_base_bruta", "gravacao_zip", "concluido"]},
-{"base": "saidas/esquema_invalido.csv", "params": {}, "processamento": ["leitura", "padronizacao", "validacao"], "exportacao_xlsx": ["releitura_base_bruta", "gravacao_xlsx", "concluido"], "exportacao_zip": ["releitura_base_bruta", "gravacao_zip", "concluido"]},
-{"base": "progresso/so_cabecalho.csv", "params": {}, "processamento": ["leitura"], "erro": "A base 'so_cabecalho.csv' esta vazia."},
-{"base": "tests/dados/contrato/transformacao/erro_serial_excel_texto_entrada.csv", "params": {}, "processamento": ["leitura", "padronizacao", "validacao", "transformacao"], "erro": "A coluna Chegou_em tem numero serial do Excel em vez de data nas linhas 2. Exporte as datas como texto (dd/mm/aaaa hh:mm:ss) ou use o arquivo .xlsx original."}
-]

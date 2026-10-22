@@ -1,9 +1,0 @@
-Cod_Cliente;Qtd_Apontamentos;Janela_Inicio_Min;Janela_Fim_Min;Janela_Inicio;Janela_Fim;Janela_Largura_Min;Cobertura_Alvo;Cobertura_Real;Cobertura_Real_Valor;Cruza_MeiaNoite;Periodo_Predominante;Comercial;Base_Janela
-J_DISPERSA;6;360.0;1110.0;06:00;18:30;750.0;80%;83.3%;0.8333333333333334;Nao;Vespertino;Sim;Chegou_em
-J_COMERCIAL;5;420.0;720.0;07:00;12:00;300.0;80%;80.0%;0.8;Nao;Diurno;Sim;Chegou_em
-J_NOTURNO;5;1020.0;1200.0;17:00;20:00;180.0;80%;80.0%;0.8;Nao;Noturno;Nao;Chegou_em
-J_SEGUNDOS;5;480.5;490.3333333333333;08:00;08:10;9.83;80%;80.0%;0.8;Nao;Diurno;Sim;Chegou_em
-J_EMPATE;4;60.0;240.0;01:00;04:00;180.0;80%;100.0%;1.0;Nao;Noturno;Nao;Chegou_em
-J_MEIA_NOITE;4;1380.0;60.0;23:00;01:00;120.0;80%;100.0%;1.0;Sim;Noturno;Nao;Chegou_em
-J_DUAS;2;480.0;1080.0;08:00;18:00;600.0;80%;100.0%;1.0;Nao;Vespertino;Sim;Chegou_em
-J_UNICA;1;620.0;620.0;10:20;10:20;0.0;80%;100.0%;1.0;Nao;Diurno;Sim;Chegou_em

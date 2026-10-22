@@ -1,8 +1,0 @@
-# Dependencias de runtime do Luna.
-# O servidor e a interface vem da biblioteca padrao do Python: nao ha framework
-# web nem passo de build. plotly continua na lista porque e ele que monta o JSON
-# das figuras, e o plotly.min.js servido ao navegador vem deste mesmo pacote.
-pandas>=2.2,<3
-numpy>=1.26,<3
-openpyxl>=3.1,<4
-plotly>=5.22,<7
