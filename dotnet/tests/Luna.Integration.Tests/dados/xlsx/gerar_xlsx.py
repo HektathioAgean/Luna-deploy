@@ -51,8 +51,9 @@ DATA_ZIP = (2026, 1, 1, 0, 0, 0)
 
 # -- Montagem do pacote ---------------------------------------------------------
 
-def gravar_xlsx(nome, abas, estilos=None, strings=None, data1904=False, macro=False):
-    """abas: lista de (nome_da_aba, tipo, xml, oculta); tipo 'sheet' ou 'chart'."""
+def gravar_xlsx(nome, abas, estilos=None, strings=None, data1904=False, macro=False, links=None):
+    """abas: lista de (nome_da_aba, tipo, xml, oculta); tipo 'sheet' ou 'chart'.
+    links: {rId: alvo} dos hiperlinks externos da primeira aba."""
     partes = {}
     overrides = [("/xl/workbook.xml", CT_MACRO if macro else CT_MAIN)]
     rels = []
@@ -64,6 +65,12 @@ def gravar_xlsx(nome, abas, estilos=None, strings=None, data1904=False, macro=Fa
         if tipo == "chart":
             partes[f"xl/{pasta}/_rels/sheet{i}.xml.rels"] = (
                 f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="{NS_PKG}"/>')
+        elif links and i == 1:
+            partes[f"xl/{pasta}/_rels/sheet{i}.xml.rels"] = (
+                f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="{NS_PKG}">'
+                + "".join(f'<Relationship Id="{r}" Type="{REL}/hyperlink" Target="{escape(a, quote=True)}" '
+                          'TargetMode="External"/>' for r, a in links.items())
+                + "</Relationships>")
         overrides.append((f"/xl/{alvo}", CT_SHEET if tipo == "sheet" else CT_CHART))
         rels.append((f"rId{i}", f"{REL}/{'worksheet' if tipo == 'sheet' else 'chartsheet'}", alvo))
         estado = ' state="hidden"' if oculta else ""
@@ -272,6 +279,22 @@ def planilha_macro():
                        estilos({164: "00000"}, [0, 164]), macro=True)
 
 
+def planilha_hiperlinks():
+    """Hiperlinks com alvos que o Uri do .NET rejeita: o leitor abre o pacote sem o
+    tratamento de URI do SpreadsheetDocument.Open(caminho, false), que copiava o
+    arquivo para %TEMP%."""
+    alvos = ["mailto:fulano@exemplo com", "http://exa mple.com/a%zz", "http://[::1", "ht tp://x", "%%%",
+             "file:///C:/pasta com espaço/a#b#c.xlsx", r"C:\pasta\a.xlsx"]
+    links = {f"rId{i}": a for i, a in enumerate(alvos, start=1)}
+    linhas = [linha(1, c("A1", t="inlineStr", inline="<t>Cod_Cliente</t>"), c("B1", t="inlineStr", inline="<t>Link</t>"))] + [
+        linha(i + 1, c(f"A{i + 1}", i), c(f"B{i + 1}", t="inlineStr", inline=f"<t>{escape(a)}</t>"))
+        for i, a in enumerate(alvos, start=1)]
+    xml = planilha(linhas, f"A1:B{len(linhas)}").replace(
+        "</sheetData>", "</sheetData><hyperlinks>"
+        + "".join(f'<hyperlink ref="B{i + 1}" r:id="rId{i}"/>' for i in range(1, len(alvos) + 1)) + "</hyperlinks>")
+    return gravar_xlsx("hiperlinks.xlsx", [("S", "sheet", xml, False)], estilos({}, [0]), links=links)
+
+
 def planilha_base_sintetica():
     """tests/dados/TESTE_data.csv em Excel: códigos e textos como strings, datas como seriais com formato de data."""
     csv = pd.read_csv(RAIZ / "tests" / "dados" / "TESTE_data.csv", sep=";", dtype=str, keep_default_na=False)
@@ -385,7 +408,7 @@ def main():
     for gerar in (planilha_tipos, planilha_esparsa, planilha_sem_dimensao, planilha_dimensao_errada,
                   planilha_dimensao_maior,
                   planilha_1904, planilha_abas, planilha_sem_estilos, planilha_macro,
-                  planilha_base_sintetica, planilha_codigos):
+                  planilha_base_sintetica, planilha_codigos, planilha_hiperlinks):
         caminho = gerar()
         esperado[caminho.name] = referencia(caminho)
     for nome in ("base_sintetica", "codigos"):

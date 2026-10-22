@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO.Packaging;
 using System.Numerics;
 using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml;
@@ -150,7 +151,10 @@ public static partial class LeitorXlsx
     /// </summary>
     internal static IEnumerable<IReadOnlyList<CelulaExcel>> Linhas(string caminho)
     {
-        using var documento = SpreadsheetDocument.Open(caminho, false);
+        using var arquivo = File.Open(caminho, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var pacote = Package.Open(arquivo, FileMode.Open, FileAccess.Read);
+        using var memoria = new MemoryStream();
+        using var documento = AbrirSemTemporario(caminho, pacote, memoria);
         var pastaDeTrabalho = documento.WorkbookPart ?? throw new InvalidDataException("Arquivo sem workbook.");
         var workbook = pastaDeTrabalho.Workbook ?? throw new InvalidDataException("Arquivo sem workbook.");
         var epoca = workbook.WorkbookProperties?.Date1904?.Value == true
@@ -164,6 +168,35 @@ public static partial class LeitorXlsx
         var leitor = new LeitorDeLinhas(epoca, estilos, strings);
         foreach (var linha in leitor.Ler(planilha))
             yield return linha;
+    }
+
+    /// <summary>
+    /// Sem SpreadsheetDocument.Open(caminho, false): somente leitura, o SDK copia
+    /// o arquivo inteiro para um temporário em %TEMP% (EnableWriteableStream),
+    /// para poder corrigir hiperlinks com URI malformada. Aqui o pacote é lido
+    /// direto do arquivo, sem cópia. Só se alguma relação tiver URI malformada o
+    /// arquivo é aberto de novo numa cópia em memória, editável e sem AutoSave,
+    /// onde o SDK faz a mesma correção sem gravar nada (custa a cópia e as partes
+    /// descompactadas em memória, por isso não é o caminho comum).
+    /// </summary>
+    private static SpreadsheetDocument AbrirSemTemporario(string caminho, Package pacote, MemoryStream memoria)
+    {
+        SpreadsheetDocument? documento = null;
+        try
+        {
+            documento = SpreadsheetDocument.Open(pacote);
+            // Carrega aqui as relações de todas as partes, hiperlinks inclusive.
+            _ = documento.GetAllParts().Count();
+            return documento;
+        }
+        catch (OpenXmlPackageException e) when (e.InnerException is UriFormatException)
+        {
+            documento?.Dispose();
+        }
+        using (var arquivo = File.Open(caminho, FileMode.Open, FileAccess.Read, FileShare.Read))
+            arquivo.CopyTo(memoria);
+        memoria.Position = 0;
+        return SpreadsheetDocument.Open(memoria, true, new OpenSettings { AutoSave = false });
     }
 
     private static OpenXmlPart? PrimeiraPlanilha(WorkbookPart pastaDeTrabalho)
