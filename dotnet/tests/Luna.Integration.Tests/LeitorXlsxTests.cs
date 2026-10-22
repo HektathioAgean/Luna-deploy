@@ -24,7 +24,7 @@ public class LeitorXlsxTests
     public static TheoryData<string> Planilhas =>
     [
         "tipos.xlsx", "esparsa.xlsx", "sem_dimensao.xlsx", "dimensao_errada.xlsx", "dimensao_maior.xlsx", "epoca1904.xlsx",
-        "abas.xlsx", "sem_estilos.xlsx", "macro.xlsm", "base_sintetica.xlsx", "codigos.xlsx",
+        "abas.xlsx", "sem_estilos.xlsx", "macro.xlsm", "base_sintetica.xlsx", "codigos.xlsx", "hiperlinks.xlsx",
     ];
 
     [Theory]
@@ -185,4 +185,40 @@ public class LeitorXlsxTests
         TimeSpan ts => $"{ts.Ticks / 10} us (TimeSpan)",
         _ => $"{valor} ({valor.GetType().Name})",
     };
+}
+
+[CollectionDefinition(nameof(TemporarioDoProcesso), DisableParallelization = true)]
+public class TemporarioDoProcesso;
+
+/// <summary>
+/// A leitura do Excel não grava em %TEMP%: o SpreadsheetDocument.Open(caminho,
+/// false) copiava a planilha inteira para um temporário. Com TMP e TEMP numa
+/// pasta que não existe, qualquer temporário faria a leitura falhar. Sem
+/// paralelismo, porque muda o ambiente do processo.
+/// </summary>
+[Collection(nameof(TemporarioDoProcesso))]
+public class LeitorXlsxSemTemporarioTests
+{
+    [Fact]
+    public void Ler_o_excel_nao_cria_temporario()
+    {
+        string caminho = Path.Combine(AppContext.BaseDirectory, "dados", "xlsx", "base_sintetica.xlsx");
+        string? tmp = Environment.GetEnvironmentVariable("TMP"), temp = Environment.GetEnvironmentVariable("TEMP");
+        string inexistente = Path.Combine(Path.GetTempPath(), $"luna_sem_temp_{Guid.NewGuid():N}");
+        try
+        {
+            Environment.SetEnvironmentVariable("TMP", inexistente);
+            Environment.SetEnvironmentVariable("TEMP", inexistente);
+            Assert.False(Directory.Exists(Path.GetTempPath()));
+
+            var tabela = LeitorXlsx.Ler(caminho);
+
+            Assert.NotEmpty(tabela.Linhas);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("TMP", tmp);
+            Environment.SetEnvironmentVariable("TEMP", temp);
+        }
+    }
 }

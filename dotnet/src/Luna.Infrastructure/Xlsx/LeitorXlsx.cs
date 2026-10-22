@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO.Packaging;
 using System.Numerics;
 using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml;
@@ -150,7 +151,13 @@ public static partial class LeitorXlsx
     /// </summary>
     internal static IEnumerable<IReadOnlyList<CelulaExcel>> Linhas(string caminho)
     {
-        using var documento = SpreadsheetDocument.Open(caminho, false);
+        // Pelo Package, e não por SpreadsheetDocument.Open(caminho, false): aberto
+        // só para leitura, o SDK copia o arquivo inteiro para um temporário em
+        // %TEMP% (EnableWriteableStream). Arquivo, acesso e compartilhamento são
+        // os mesmos que o SDK usaria, e os erros também.
+        using var arquivo = File.Open(caminho, FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var pacote = Package.Open(arquivo, FileMode.Open, FileAccess.Read);
+        using var documento = SpreadsheetDocument.Open(pacote);
         var pastaDeTrabalho = documento.WorkbookPart ?? throw new InvalidDataException("Arquivo sem workbook.");
         var workbook = pastaDeTrabalho.Workbook ?? throw new InvalidDataException("Arquivo sem workbook.");
         var epoca = workbook.WorkbookProperties?.Date1904?.Value == true

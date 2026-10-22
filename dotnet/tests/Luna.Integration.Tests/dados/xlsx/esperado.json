@@ -7718,5 +7718,183 @@
    },
    "motivos": []
   }
+ },
+ "hiperlinks.xlsx": {
+  "linhas": [
+   [
+    [
+     "str",
+     "Cod_Cliente",
+     "General"
+    ],
+    [
+     "str",
+     "Link",
+     "General"
+    ]
+   ],
+   [
+    [
+     "int",
+     "1",
+     "General"
+    ],
+    [
+     "str",
+     "mailto:fulano@exemplo com",
+     "General"
+    ]
+   ],
+   [
+    [
+     "int",
+     "2",
+     "General"
+    ],
+    [
+     "str",
+     "http://exa mple.com/a%zz",
+     "General"
+    ]
+   ],
+   [
+    [
+     "int",
+     "3",
+     "General"
+    ],
+    [
+     "str",
+     "http://[::1",
+     "General"
+    ]
+   ],
+   [
+    [
+     "int",
+     "4",
+     "General"
+    ],
+    [
+     "str",
+     "ht tp://x",
+     "General"
+    ]
+   ],
+   [
+    [
+     "int",
+     "5",
+     "General"
+    ],
+    [
+     "str",
+     "%%%",
+     "General"
+    ]
+   ],
+   [
+    [
+     "int",
+     "6",
+     "General"
+    ],
+    [
+     "str",
+     "file:///C:/pasta com espaço/a#b#c.xlsx",
+     "General"
+    ]
+   ],
+   [
+    [
+     "int",
+     "7",
+     "General"
+    ],
+    [
+     "str",
+     "C:\\pasta\\a.xlsx",
+     "General"
+    ]
+   ]
+  ],
+  "tabela": {
+   "colunas": [
+    "Cod_Cliente",
+    "Link"
+   ],
+   "linhas": [
+    [
+     [
+      "str",
+      "1"
+     ],
+     [
+      "str",
+      "mailto:fulano@exemplo com"
+     ]
+    ],
+    [
+     [
+      "str",
+      "2"
+     ],
+     [
+      "str",
+      "http://exa mple.com/a%zz"
+     ]
+    ],
+    [
+     [
+      "str",
+      "3"
+     ],
+     [
+      "str",
+      "http://[::1"
+     ]
+    ],
+    [
+     [
+      "str",
+      "4"
+     ],
+     [
+      "str",
+      "ht tp://x"
+     ]
+    ],
+    [
+     [
+      "str",
+      "5"
+     ],
+     [
+      "str",
+      "%%%"
+     ]
+    ],
+    [
+     [
+      "str",
+      "6"
+     ],
+     [
+      "str",
+      "file:///C:/pasta com espaço/a#b#c.xlsx"
+     ]
+    ],
+    [
+     [
+      "str",
+      "7"
+     ],
+     [
+      "str",
+      "C:\\pasta\\a.xlsx"
+     ]
+    ]
+   ]
+  }
  }
 }
