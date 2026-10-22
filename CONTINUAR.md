@@ -40,17 +40,32 @@ corporativo** com conta padrão, pelo roteiro `LUNA_HOMOLOGACAO_DESKTOP.md`
   com `winget install JRSoftware.InnoSetup --scope user`). Gera
   `Luna-Setup-<versão>-win-x64.exe`, `.sha256` e `.BUILD.txt` em `dist/`.
 - `%LOCALAPPDATA%\Programs\Luna`, `asInvoker` (sem UAC), registro só em
-  `HKCU`, Menu Iniciar e área de trabalho opcional; atualização remove as DLLs
-  antigas e fecha o Luna pelo Restart Manager; desinstalação remove só o que
-  instalou e não começa com o Luna aberto (o desinstalador do Inno não usa o
-  Restart Manager: sem a checagem, DLLs em uso ficavam órfãs).
+  `HKCU`, Menu Iniciar e área de trabalho opcional; atualização remove só as
+  DLLs do `MANIFESTO.txt` anterior com o mesmo SHA-256 (as outras ficam e vão
+  para o log) e, com janela, o Restart Manager pergunta antes de fechar o
+  Luna; silencioso com o Luna aberto não instala; desinstalação remove só o
+  que instalou e não começa com o Luna aberto (o desinstalador do Inno não
+  usa o Restart Manager: sem a checagem, DLLs em uso ficavam órfãs).
+- Revisão do PR39 (22/10): o `[InstallDelete]` com `*.dll` apagava qualquer
+  DLL da pasta, inclusive do usuário; trocado pela remoção pelo manifesto
+  anterior. `conferir_instalacao.ps1 -ManifestoAnterior` separa obsoleto do
+  aplicativo (no manifesto anterior, mesmo SHA-256: erro) de arquivo do
+  usuário (preservado). Teste fora do repo:
+  `luna-fuzz-harness/pr39/teste_atualizacao.ps1` (0.9.0 com DLLs a mais →
+  1.0.0, 27 conferências) e `teste_janela.ps1` (página do Restart Manager).
 - Validado em 22/10 no PC principal (conta sem elevação): instalação
   silenciosa, 287 arquivos iguais ao manifesto, atualização com o Luna aberto
   e DLL órfã, desinstalação com e sem o Luna aberto, arquivo do usuário
   preservado. Roteiro no PC corporativo: `LUNA_HOMOLOGACAO_DESKTOP.md` (I1–I8).
-- O ISCC 6.7.3 imprime "Non-commercial use only": desde o 6.5.0 a JR Software
-  pede licença comercial para uso comercial (o `license.txt` continua
-  permitindo uso comercial). Decidir antes de distribuir na empresa.
+- Licença do Inno Setup: o ISCC 6.7.3 imprime "Non-commercial use only".
+  Desde o 6.5.0 a JR Software solicita licença comercial a usuários
+  comerciais (organização com fins lucrativos acima de US$ 5.000 de receita
+  anual, inclusive para instaladores só de uso interno), mas o FAQ da página
+  de compra (https://jrsoftware.org/isorder.php, conferido em 22/10/2026)
+  diz que a compra "is not strictly required", e o `license.txt` permite
+  uso comercial. Não há proibição. **Recomendação:** antes de distribuir na
+  empresa, adquirir a licença comercial em nome da empresa (perpétua,
+  pagamento único, com dois anos de atualizações).
 
 ## Publicação portátil (PR15, em revisão)
 

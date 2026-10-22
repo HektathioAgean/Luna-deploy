@@ -53,12 +53,6 @@ Name: "ptbr"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
-[InstallDelete]
-; Atualização: DLLs da versão anterior saem antes da cópia, para não sobrar
-; nenhuma que a nova não publique. Só DLLs: arquivos do usuário ficam.
-Type: files; Name: "{app}\*.dll"
-Type: files; Name: "{app}\pt-BR\*.dll"
-
 [Files]
 Source: "{#Origem}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
@@ -85,6 +79,67 @@ begin
   Wmi := Localizador.ConnectServer('.', 'root\CIMV2');
   Processos := Wmi.ExecQuery('SELECT ProcessId FROM Win32_Process WHERE ExecutablePath = ''' + Caminho + '''');
   Result := Processos.Count > 0;
+end;
+
+// Silencioso, o Restart Manager fecharia o Luna sem aviso (o que estava na
+// tela se perde). Então não instala: pede para fechar e rodar de novo. Com
+// janela, a página do Restart Manager mostra o Luna e deixa escolher.
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  if WizardSilent() and LunaAberto() then
+    Result := 'O Luna está aberto. Feche o Luna e rode o instalador de novo.';
+end;
+
+// Atualização: só saem as DLLs que o MANIFESTO.txt da instalação anterior
+// lista com o mesmo SHA-256, ou seja, comprovadamente da versão anterior.
+// Qualquer outra (do usuário, alterada ou ilegível) fica, e o log registra.
+procedure ApagarDllsDaVersaoAnterior();
+var
+  Linhas: TArrayOfString;
+  I, Tab: Integer;
+  Relativo, Resto, Hash, Arquivo: String;
+begin
+  if not LoadStringsFromFile(ExpandConstant('{app}\MANIFESTO.txt'), Linhas) then
+  begin
+    Log('Sem MANIFESTO.txt anterior: nenhuma DLL removida.');
+    Exit;
+  end;
+  for I := 0 to GetArrayLength(Linhas) - 1 do
+  begin
+    // caminho <tab> tamanho <tab> SHA-256
+    Tab := Pos(#9, Linhas[I]);
+    if Tab = 0 then Continue;
+    Relativo := Copy(Linhas[I], 1, Tab - 1);
+    Resto := Copy(Linhas[I], Tab + 1, MaxInt);
+    Tab := Pos(#9, Resto);
+    if (Tab = 0) or (CompareText(ExtractFileExt(Relativo), '.dll') <> 0) then Continue;
+    Hash := Copy(Resto, Tab + 1, MaxInt);
+    StringChangeEx(Relativo, '/', '\', True);
+    if (Pos('..', Relativo) > 0) or (Pos(':', Relativo) > 0) then
+    begin
+      Log('Preservado (caminho fora da pasta no manifesto anterior): ' + Relativo);
+      Continue;
+    end;
+    Arquivo := ExpandConstant('{app}\') + Relativo;
+    if not FileExists(Arquivo) then Continue;
+    try
+      if CompareText(GetSHA256OfFile(Arquivo), Hash) <> 0 then
+        Log('Preservado (SHA-256 difere do manifesto anterior): ' + Arquivo)
+      else if DeleteFile(Arquivo) then
+        Log('Removido (da versão anterior): ' + Arquivo)
+      else
+        Log('Preservado (não foi possível apagar): ' + Arquivo);
+    except
+      Log('Preservado (não foi possível ler): ' + Arquivo);
+    end;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+    ApagarDllsDaVersaoAnterior();
 end;
 
 function InitializeUninstall(): Boolean;

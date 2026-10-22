@@ -101,10 +101,15 @@ commit, compilador, SHA-256 do manifesto e do ZIP correspondente).
 O instalador copia a pasta publicada sem mudar nenhum arquivo para
 `%LOCALAPPDATA%\Programs\Luna`, sem administrador; cria o atalho no Menu
 Iniciar (área de trabalho opcional) e o registro de desinstalação só em
-`HKCU`. Desinstalar remove só o que ele instalou. Na atualização, as DLLs da
-versão anterior saem antes da cópia. Com o Luna aberto, o instalador pede
-para fechá-lo (Restart Manager) e o desinstalador não começa até ele ser
-fechado (o desinstalador do Inno não usa o Restart Manager: sem essa
+`HKCU`. Desinstalar remove só o que ele instalou. Na atualização, saem só as
+DLLs que o `MANIFESTO.txt` da instalação anterior lista com o mesmo SHA-256;
+qualquer outra (do usuário, alterada ou ilegível) fica e vai para o log do
+instalador (`/LOG`). Com o Luna aberto, o instalador com janela mostra a
+página do Restart Manager (Luna na lista, "Fechar os aplicativos
+automaticamente" ou "Não fechar"): ao fechar, o que estava na tela do Luna se
+perde (exportações já gravadas ficam). Silencioso, com o Luna aberto, ele
+não instala (código 7) em vez de fechar sem aviso. O desinstalador não
+começa com o Luna aberto (o do Inno não usa o Restart Manager: sem essa
 checagem, as DLLs em uso ficariam na pasta sem registro).
 
 Roteiro com conta padrão, depois dos passos 1–2. Se o ZIP portátil já foi
@@ -125,7 +130,9 @@ I4. **Registro e atalhos.** Atalho "Luna" no Menu Iniciar (e na área de
 I5. **Funcionamento offline.** Com a rede desligada, repita os passos 8–12
     abrindo pelo atalho.
 I6. **Atualização com o Luna aberto.** Com o Luna aberto, rode o instalador
-    de novo. Esperado: pede para fechar o Luna; no fim, I3 continua igual.
+    de novo, com um arquivo seu `minha_biblioteca.dll` na pasta. Esperado: a
+    página do Restart Manager lista o Luna e só fecha com a sua escolha; no
+    fim, I3 continua igual e `minha_biblioteca.dll` fica com o mesmo SHA-256.
 I7. **Desinstalação preserva dados.** Copie um arquivo seu para
     `%LOCALAPPDATA%\Programs\Luna` e mantenha as exportações do passo 11.
     Com o Luna aberto, desinstale por Configurações > Aplicativos: o

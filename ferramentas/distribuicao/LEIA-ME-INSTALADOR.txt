@@ -24,7 +24,9 @@ ANTES DE INSTALAR
 
 ATUALIZAR
 - Rode o instalador da versão nova. Se o Luna estiver aberto, o instalador
-  pede para fechá-lo.
+  pergunta se pode fechá-lo; ao fechar, o que estiver na tela do Luna se
+  perde (as exportações já gravadas ficam). Prefira fechar o Luna antes.
+- Só saem os arquivos da versão anterior; arquivos seus na pasta ficam.
 
 DESINSTALAR
 - Feche o Luna e use Configurações > Aplicativos > Luna > Desinstalar. Saem
