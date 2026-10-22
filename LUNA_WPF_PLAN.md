@@ -95,7 +95,8 @@ do Python em `ProcessarBase` e progresso por aba no `Exportador`.
 | PR13 | aba Resultados (8 tabelas virtualizadas) e Exportação; fecha o MVP (mergeado, #33) | fumaça com a base real (133 mil linhas) |
 | — | protótipo ScottPlot 5 (§4.2), fora do produto (aprovado em 20/10) | dois eixos, zoom, deslocamento, barras, dispersão, janela circular |
 | PR14 | Painel do Cliente com ScottPlot 5 (mergeado, #34) | comparação visual com a versão web |
-| PR15 | publicação self-contained win-x64 portátil; instalador por usuário depois | máquina limpa, sem admin |
+| PR15a | leitura do XLSX sem cópia temporária em `%TEMP%` (mergeado, #36) | diferencial C# × Python; `%TEMP%` vigiado com controle positivo |
+| PR15 | publicação self-contained win-x64 portátil (em revisão); instalador por usuário depois | ZIP conferido, smoke nos dois temas a partir do ZIP, pasta sem escrita; homologação no PC corporativo com conta padrão pendente (`LUNA_HOMOLOGACAO_DESKTOP.md`) |
 
 Cada PR: aberto para revisão, sem merge automático; Python, contrato e
 matemática intocados.

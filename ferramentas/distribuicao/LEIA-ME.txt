@@ -1,0 +1,56 @@
+LUNA — Tempos operacionais de entrega (versão para Windows)
+==========================================================
+
+Aplicativo portátil: não instala nada, não precisa de administrador, não usa
+Python nem servidor local e não acessa a rede.
+
+REQUISITOS MÍNIMOS
+- Windows 10 versão 2004 (build 19041, maio de 2020) ou mais novo, ou
+  Windows 11, 64 bits (x64).
+- Cerca de 200 MB livres para a pasta extraída. O .NET vem junto: não é
+  preciso instalar o .NET nem o Python.
+- 4 GB de memória. Uma base de 300 mil linhas usa cerca de 0,5 GB.
+
+ANTES DE EXTRAIR
+1. Confira o arquivo: o SHA-256 do ZIP tem de ser igual ao do arquivo
+   .sha256 que veio com ele. No PowerShell:
+       Get-FileHash .\{{ZIP}} -Algorithm SHA256
+2. Se o ZIP veio da internet, de e-mail ou de uma pasta de rede, clique nele
+   com o botão direito > Propriedades > marque "Desbloquear" > OK. Sem isso o
+   Windows marca todos os arquivos extraídos como vindos de fora.
+
+COMO USAR
+1. Extraia o ZIP numa pasta local, de preferência fora do OneDrive (são
+   {{ARQUIVOS}} arquivos), por exemplo:
+       %LOCALAPPDATA%\Programs\Luna
+2. Abra Luna.exe. Para ter um atalho, clique com o botão direito em Luna.exe >
+   Mostrar mais opções > Enviar para > Área de trabalho (criar atalho).
+3. O executável não é assinado digitalmente: o Windows SmartScreen ou a
+   política da empresa podem avisar ou bloquear a abertura. No computador da
+   empresa, não contorne o aviso nem o bloqueio: peça à TI a autorização do
+   Luna, informando o nome do ZIP e o SHA-256 do arquivo .sha256.
+
+O QUE O LUNA GRAVA
+- Só os arquivos de exportação (Excel ou ZIP de CSVs), na pasta que você
+  escolher; durante a gravação existe ali um arquivo .parcial, renomeado no
+  fim. Ele não grava configurações, registros (logs), temporários nem nada na
+  pasta onde foi extraído, e lê a base sem copiá-la.
+
+ATUALIZAR E REMOVER
+- Atualizar: feche o Luna, apague a pasta antiga e extraia a versão nova.
+- Remover: apague a pasta. Não há nada instalado no Windows.
+
+CONVIVÊNCIA COM O LUNA EM PYTHON
+- As duas versões são independentes: não compartilham arquivos, pastas nem
+  porta de rede, e podem ficar abertas ao mesmo tempo. A versão em Python
+  continua sendo a de referência até a aprovação da substituição.
+
+LICENÇAS
+- O Luna é distribuído sob a Licença Apache 2.0 (LICENSE.txt).
+- Os componentes de terceiros incluídos e as respectivas licenças e avisos
+  estão em THIRD-PARTY-NOTICES.txt. O uso desses componentes está sujeito a
+  esses termos, inclusive aos termos da Microsoft para os componentes do
+  Windows SDK e do .NET.
+- MANIFESTO.txt lista cada um dos outros arquivos da pasta com tamanho e
+  SHA-256, para conferir um por um. Ele não traz o próprio hash (um arquivo
+  não pode conter o próprio SHA-256): a integridade dele vem do SHA-256 do ZIP.
