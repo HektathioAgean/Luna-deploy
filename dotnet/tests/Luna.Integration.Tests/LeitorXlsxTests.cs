@@ -193,16 +193,19 @@ public class TemporarioDoProcesso;
 /// <summary>
 /// A leitura do Excel não grava em %TEMP%: o SpreadsheetDocument.Open(caminho,
 /// false) copiava a planilha inteira para um temporário. Com TMP e TEMP numa
-/// pasta que não existe, qualquer temporário faria a leitura falhar. Sem
-/// paralelismo, porque muda o ambiente do processo.
+/// pasta que não existe, qualquer temporário faria a leitura falhar; a planilha
+/// de hiperlinks cobre a correção das URIs malformadas. Sem paralelismo,
+/// porque muda o ambiente do processo.
 /// </summary>
 [Collection(nameof(TemporarioDoProcesso))]
 public class LeitorXlsxSemTemporarioTests
 {
-    [Fact]
-    public void Ler_o_excel_nao_cria_temporario()
+    [Theory]
+    [InlineData("base_sintetica.xlsx")]
+    [InlineData("hiperlinks.xlsx")]
+    public void Ler_o_excel_nao_cria_temporario(string planilha)
     {
-        string caminho = Path.Combine(AppContext.BaseDirectory, "dados", "xlsx", "base_sintetica.xlsx");
+        string caminho = Path.Combine(AppContext.BaseDirectory, "dados", "xlsx", planilha);
         string? tmp = Environment.GetEnvironmentVariable("TMP"), temp = Environment.GetEnvironmentVariable("TEMP");
         string inexistente = Path.Combine(Path.GetTempPath(), $"luna_sem_temp_{Guid.NewGuid():N}");
         try
