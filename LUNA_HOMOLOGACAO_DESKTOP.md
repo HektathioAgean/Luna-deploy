@@ -34,9 +34,10 @@ PowerShell, na conta que vai usar o Luna.
 6. **Marco zero dos arquivos.** Antes de abrir o Luna:
    `$inicio = Get-Date`.
 7. **Abertura.** Abra `Luna.exe` com duplo clique. Anote: aviso do
-   SmartScreen (e se "Executar assim mesmo" aparece), bloqueio por
-   AppLocker/WDAC/antivírus (mensagem exata e print), tempo até a janela
-   aparecer.
+   SmartScreen, bloqueio por AppLocker/WDAC/antivírus (mensagem exata e
+   print), tempo até a janela aparecer. Não contorne aviso nem bloqueio:
+   registre-o e peça a autorização à TI (nome do ZIP e SHA-256) antes de
+   seguir.
 8. **Base real.** Escolha a base, valide e processe. Anote o tempo do
    processamento e os KPIs da tela.
 9. **Comparação com o Python.** Processe a mesma base no Luna em Python, com

@@ -25,9 +25,10 @@ COMO USAR
        %LOCALAPPDATA%\Programs\Luna
 2. Abra Luna.exe. Para ter um atalho, clique com o botão direito em Luna.exe >
    Mostrar mais opções > Enviar para > Área de trabalho (criar atalho).
-3. O executável não é assinado digitalmente. Se o Windows SmartScreen avisar,
-   clique em "Mais informações" > "Executar assim mesmo". Se a empresa
-   bloquear a execução, peça liberação à TI.
+3. O executável não é assinado digitalmente: o Windows SmartScreen ou a
+   política da empresa podem avisar ou bloquear a abertura. No computador da
+   empresa, não contorne o aviso nem o bloqueio: peça à TI a autorização do
+   Luna, informando o nome do ZIP e o SHA-256 do arquivo .sha256.
 
 O QUE O LUNA GRAVA
 - Só os arquivos de exportação (Excel ou ZIP de CSVs), na pasta que você
@@ -50,4 +51,6 @@ LICENÇAS
   estão em THIRD-PARTY-NOTICES.txt. O uso desses componentes está sujeito a
   esses termos, inclusive aos termos da Microsoft para os componentes do
   Windows SDK e do .NET.
-- MANIFESTO.txt lista cada arquivo da pasta com tamanho e SHA-256.
+- MANIFESTO.txt lista cada um dos outros arquivos da pasta com tamanho e
+  SHA-256, para conferir um por um. Ele não traz o próprio hash (um arquivo
+  não pode conter o próprio SHA-256): a integridade dele vem do SHA-256 do ZIP.

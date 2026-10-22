@@ -566,7 +566,9 @@ cópia de 13.415.794 B do leitor antigo.
 `ferramentas/publicar_desktop.ps1` publica o `Luna.Desktop` como `Luna.exe`
 (versão 1.0.0; recursos do WPF só em pt-BR) em Release self-contained win-x64,
 sem PDB, e gera em `dist/`: a pasta, o ZIP, o `.sha256` e o `MANIFESTO.txt`
-(caminho, tamanho e SHA-256 de cada arquivo). O `THIRD-PARTY-NOTICES.txt` sai
+(caminho, tamanho e SHA-256 de cada um dos outros arquivos, verificados um a
+um; o manifesto não traz o próprio hash, e a integridade dele vem do SHA-256
+do ZIP). O `THIRD-PARTY-NOTICES.txt` sai
 do `Luna.deps.json`: cada pacote e runtime pack com a licença que declara
 (expressão SPDX ou arquivo do pacote) e os avisos que traz; licença sem texto
 conhecido ou componente sem licença resolvida faz o script falhar. Depois de
@@ -584,7 +586,8 @@ termos de código distribuível do Windows SDK para o
 **Validação (21/10/2026, fora do repo:
 `luna-fuzz-harness/pr15/testes_distribuicao.ps1`):**
 - integridade: SHA-256 igual ao `.sha256`; `Expand-Archive` (outra
-  implementação que a do script) com os 288 arquivos iguais ao manifesto;
+  implementação que a do script) com 288 arquivos: os 287 listados iguais ao
+  manifesto, mais o próprio `MANIFESTO.txt`;
   `LEIA-ME.txt` com o nome do ZIP e o número de arquivos; sem `.pdb`;
   `includedFrameworks` com `Microsoft.NETCore.App` e
   `Microsoft.WindowsDesktop.App`. Contra o ZIP de teste anterior (mesmo
